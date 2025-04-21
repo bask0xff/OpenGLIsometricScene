@@ -1,9 +1,14 @@
 package com.bask0xff.openglisometricscene
 
 import android.opengl.EGLConfig
+import android.opengl.GLES10.GL_COLOR_BUFFER_BIT
+import android.opengl.GLES10.GL_DEPTH_BUFFER_BIT
+import android.opengl.GLES10.glClear
+import android.opengl.GLES10.glClearColor
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
+import android.util.Log
 import javax.microedition.khronos.opengles.GL10
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
@@ -24,6 +29,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     override fun onDrawFrame(gl: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        glClearColor(0f, 0f, 0f, 1f) // чёрный фон
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        //Log.d("Renderer", "onDrawFrame called")
 
         val viewMatrix = FloatArray(16)
         val projMatrix = FloatArray(16)
