@@ -88,7 +88,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             }
         }
 
-        Log.d(TAG, "handleTouch: clsect cude: ${closestCube?.x}, ${closestCube?.y}")
+        Log.d(TAG, "handleTouch: clsect cube: ${closestCube?.x}, ${closestCube?.y}")
 
         closestCube?.randomizeColor()
         return closestCube != null
