@@ -94,18 +94,31 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     //override fun onSurfaceDestroyed(gl: GL10?) {}
 
-    fun handleTouch(x: Float, y: Float) {
-        // Преобразуем координаты экрана в мировые координаты
-        val worldX = (x / 500) - 1 // Замените на подходящую логику
-        val worldY = (y / 500) - 1 // Замените на подходящую логику
+    fun handleTouch(screenX: Float, screenY: Float) {
+        // Нормализуем координаты экрана в [-1, 1]
+        val normalizedX = (2f * screenX) / surfaceWidth - 1f
+        val normalizedY = 1f - (2f * screenY) / surfaceHeight
 
-        // Проверяем, был ли клик по одному из кубов
+        // Преобразуем в мировые координаты через обратную матрицу проекции-вида
+        val invertedVPMatrix = FloatArray(16)
+        Matrix.invertM(invertedVPMatrix, 0, vpMatrix, 0)
+
+        // Z = 0 (на плоскости XY)
+        val nearPoint = floatArrayOf(normalizedX, normalizedY, 0f, 1f)
+        val worldPoint = FloatArray(4)
+        Matrix.multiplyMV(worldPoint, 0, invertedVPMatrix, 0, nearPoint, 0)
+
+        val worldX = worldPoint[0] / worldPoint[3]
+        val worldY = worldPoint[1] / worldPoint[3]
+
+        Log.d("Touch", "World coords: x=$worldX, y=$worldY")
+
         for (cube in cubes) {
             if (worldX >= cube.x - 0.5f && worldX <= cube.x + 0.5f &&
                 worldY >= cube.y - 0.5f && worldY <= cube.y + 0.5f) {
-                // Если клик был внутри куба, меняем его цвет
                 cube.randomizeColor()
             }
         }
     }
+
 }
