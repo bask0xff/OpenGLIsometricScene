@@ -8,6 +8,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
+    private val TAG = "IsoGLRenderer"
     private val cubes = mutableListOf<Cube>()
     val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
@@ -86,6 +87,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 closestCube = cube
             }
         }
+
+        Log.d(TAG, "handleTouch: clsect cude: ${closestCube?.x}, ${closestCube?.y}")
 
         closestCube?.randomizeColor()
         return closestCube != null
