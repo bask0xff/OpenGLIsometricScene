@@ -1,5 +1,6 @@
 package com.bask0xff.openglisometricscene
 
+import android.opengl.GLES20
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
@@ -38,19 +39,31 @@ class MyGLRenderer : GLSurfaceView.Renderer {
     }
 
 
-    override fun onSurfaceChanged(unused: GL10?, width: Int, height: Int) {
-        glViewport(0, 0, width, height)
-        val ratio = width.toFloat() / height
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        GLES20.glViewport(0, 0, width, height)
 
-        Matrix.frustumM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, 2f, 10f)
+        val ratio: Float = width.toFloat() / height.toFloat()
 
-        // Позиция камеры для изометрии
-        Matrix.setLookAtM(viewMatrix, 0,
-            5f, 7f, 5f,  // камера
-            2f, 0f, 2f,  // центр
-            0f, 1f, 0f   // вверх
+        Matrix.setIdentityM(projectionMatrix, 0)
+        Matrix.orthoM(
+            projectionMatrix, 0,
+            -ratio * 5, ratio * 5, // left, right
+            -5f, 5f,               // bottom, top
+            -10f, 10f              // near, far
         )
+
+        // Камера в изометрической позиции: смотрит под углом сверху
+        Matrix.setLookAtM(
+            viewMatrix, 0,
+            5f, 5f, 5f,     // eye
+            0f, 0f, 0f,     // center
+            0f, 1f, 0f      // up
+        )
+
+        // multiply projection and view to get final MVP matrix
+        Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
     }
+
 
     override fun onDrawFrame(unused: GL10?) {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
