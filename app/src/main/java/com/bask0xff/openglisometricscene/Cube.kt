@@ -6,11 +6,17 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
-class Cube(private val x: Float, private val y: Float, private val z: Float) {
+class Cube(
+    private val x: Float,
+    private val y: Float,
+    private val z: Float,
+    private val color: FloatArray // RGBA
+) {
 
     private val vertexBuffer: FloatBuffer
     private val mvpMatrix = FloatArray(16)
     private val modelMatrix = FloatArray(16)
+
 
     private val vertexShaderCode = """
         uniform mat4 uMVPMatrix;
@@ -22,8 +28,9 @@ class Cube(private val x: Float, private val y: Float, private val z: Float) {
 
     private val fragmentShaderCode = """
         precision mediump float;
+        uniform vec4 uColor;
         void main() {
-            gl_FragColor = vec4(0.2, 0.8, 1.0, 1.0);
+            gl_FragColor = uColor;
         }
     """
 
@@ -84,6 +91,7 @@ class Cube(private val x: Float, private val y: Float, private val z: Float) {
 
         val positionHandle = glGetAttribLocation(program, "vPosition")
         val mvpMatrixHandle = glGetUniformLocation(program, "uMVPMatrix")
+        val colorHandle = glGetUniformLocation(program, "uColor")
 
         glEnableVertexAttribArray(positionHandle)
         glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 3 * 4, vertexBuffer)
@@ -93,6 +101,8 @@ class Cube(private val x: Float, private val y: Float, private val z: Float) {
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
 
         glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0)
+        glUniform4fv(colorHandle, 1, color, 0)
+
         glDrawElements(GL_TRIANGLES, drawOrder.size, GL_UNSIGNED_SHORT, indexBuffer)
 
         glDisableVertexAttribArray(positionHandle)

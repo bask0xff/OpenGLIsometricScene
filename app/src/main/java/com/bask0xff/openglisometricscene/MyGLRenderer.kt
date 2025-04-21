@@ -18,12 +18,25 @@ class MyGLRenderer : GLSurfaceView.Renderer {
         glClearColor(0f, 0f, 0f, 1f)
         glEnable(GL_DEPTH_TEST)
 
+        val colors = listOf(
+            floatArrayOf(1f, 0f, 0f, 1f), // Red
+            floatArrayOf(0f, 1f, 0f, 1f), // Green
+            floatArrayOf(0f, 0f, 1f, 1f), // Blue
+            floatArrayOf(1f, 1f, 0f, 1f), // Yellow
+            floatArrayOf(1f, 0f, 1f, 1f), // Magenta
+            floatArrayOf(0f, 1f, 1f, 1f), // Cyan
+            floatArrayOf(1f, 0.5f, 0f, 1f), // Orange
+            floatArrayOf(0.6f, 0f, 1f, 1f)  // Violet
+        )
+
         for (x in 0..4) {
             for (y in 0..4) {
-                cubes.add(Cube(x.toFloat(), y.toFloat(), 0f))
+                val color = colors.random()
+                cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
             }
         }
     }
+
 
     override fun onSurfaceChanged(unused: GL10?, width: Int, height: Int) {
         glViewport(0, 0, width, height)

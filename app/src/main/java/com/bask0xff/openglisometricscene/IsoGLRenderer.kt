@@ -18,11 +18,21 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         GLES20.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
 
-        for (x in 0 until 5) {
-            for (z in 0 until 5) {
-                if ((x + z) % 2 == 0) {
-                    cubes.add(Cube(x.toFloat(), 0f, z.toFloat()))
-                }
+        val colors = listOf(
+            floatArrayOf(1f, 0f, 0f, 1f), // Red
+            floatArrayOf(0f, 1f, 0f, 1f), // Green
+            floatArrayOf(0f, 0f, 1f, 1f), // Blue
+            floatArrayOf(1f, 1f, 0f, 1f), // Yellow
+            floatArrayOf(1f, 0f, 1f, 1f), // Magenta
+            floatArrayOf(0f, 1f, 1f, 1f), // Cyan
+            floatArrayOf(1f, 0.5f, 0f, 1f), // Orange
+            floatArrayOf(0.6f, 0f, 1f, 1f)  // Violet
+        )
+
+        for (x in 0..4) {
+            for (y in 0..4) {
+                val color = colors.random()
+                cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
             }
         }
     }
