@@ -21,7 +21,7 @@ class MyGLSurfaceView(context: Context) : GLSurfaceView(context) {
         Log.d(TAG, "onTouchEvent: ")
         val x = event.x
         val y = event.y
-        renderer.handleTouch(x, y)
+        renderer.handleTouch(x, y)  // Передаем координаты касания в обработчик
         return true
     }
 }
