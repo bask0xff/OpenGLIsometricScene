@@ -124,4 +124,28 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
             else -> throw IllegalArgumentException("Invalid axis")
         }
     }
+
+    fun intersectRayWithCube(rayOrigin: Vector3, rayDir: Vector3): Float? {
+        val tMin = FloatArray(3)
+        val tMax = FloatArray(3)
+
+        for (i in 0..2) {
+            val invD = 1.0f / rayDir[i]
+            var t0 = (getMin(i) - rayOrigin[i]) * invD
+            var t1 = (getMax(i) - rayOrigin[i]) * invD
+            if (invD < 0.0f) {
+                val tmp = t0
+                t0 = t1
+                t1 = tmp
+            }
+            tMin[i] = t0
+            tMax[i] = t1
+        }
+
+        val tEnter = maxOf(tMin[0], tMin[1], tMin[2])
+        val tExit = minOf(tMax[0], tMax[1], tMax[2])
+
+        return if (tEnter <= tExit && tExit >= 0f) tEnter else null
+    }
+
 }

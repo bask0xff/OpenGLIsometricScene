@@ -9,7 +9,7 @@ import javax.microedition.khronos.opengles.GL10
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val cubes = mutableListOf<Cube>()
-    private val projectionMatrix = FloatArray(16)
+    val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
 
@@ -67,54 +67,71 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         }
     }
 
-    fun handleTouch(screenX: Float, screenY: Float) {
-        val x = (2f * screenX) / surfaceWidth - 1f
-        val y = 1f - (2f * screenY) / surfaceHeight
+    // Function to handle touch and find closest cube
+    fun handleTouch(
+        x: Float,
+        y: Float,
+        screenWidth: Int,
+        screenHeight: Int
+    ): Boolean {
+        val (rayOrigin, rayDir) = getRayOriginAndDirection(x, y, screenWidth, screenHeight, viewMatrix, projectionMatrix)
 
-        nearPointNdc[0] = x
-        nearPointNdc[1] = y
-        nearPointNdc[2] = -1f
-        nearPointNdc[3] = 1f
+        var closestCube: Cube? = null
+        var minDistance = Float.MAX_VALUE
 
-        farPointNdc[0] = x
-        farPointNdc[1] = y
-        farPointNdc[2] = 1f
-        farPointNdc[3] = 1f
+        for (cube in cubes) {
+            val distance = cube.intersectRayWithCube(rayOrigin, rayDir)
+            if (distance != null && distance < minDistance) {
+                minDistance = distance
+                closestCube = cube
+            }
+        }
 
-        val invertedVPMatrix = FloatArray(16)
-        Matrix.invertM(invertedVPMatrix, 0, vpMatrix, 0)
+        closestCube?.randomizeColor()
+        return closestCube != null
+    }
+
+
+    // Convert touch to world ray
+    private fun getRayOriginAndDirection(
+        x: Float,
+        y: Float,
+        screenWidth: Int,
+        screenHeight: Int,
+        viewMatrix: FloatArray,
+        projectionMatrix: FloatArray
+    ): Pair<Vector3, Vector3> {
+        val normalizedX = (2.0f * x) / screenWidth - 1.0f
+        val normalizedY = 1.0f - (2.0f * y) / screenHeight
+
+        val nearPointNDC = floatArrayOf(normalizedX, normalizedY, -1.0f, 1.0f)
+        val farPointNDC = floatArrayOf(normalizedX, normalizedY, 1.0f, 1.0f)
+
+        val invertedMatrix = FloatArray(16)
+        val vpMatrix = FloatArray(16)
+        Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+        Matrix.invertM(invertedMatrix, 0, vpMatrix, 0)
 
         val nearPointWorld = FloatArray(4)
         val farPointWorld = FloatArray(4)
 
-        Matrix.multiplyMV(nearPointWorld, 0, invertedVPMatrix, 0, nearPointNdc, 0)
-        Matrix.multiplyMV(farPointWorld, 0, invertedVPMatrix, 0, farPointNdc, 0)
+        Matrix.multiplyMV(nearPointWorld, 0, invertedMatrix, 0, nearPointNDC, 0)
+        Matrix.multiplyMV(farPointWorld, 0, invertedMatrix, 0, farPointNDC, 0)
 
-        for (i in 0..2) {
+        for (i in 0..3) {
             nearPointWorld[i] /= nearPointWorld[3]
             farPointWorld[i] /= farPointWorld[3]
         }
 
-        val rayOrigin = floatArrayOf(nearPointWorld[0], nearPointWorld[1], nearPointWorld[2])
-        val rayDir = floatArrayOf(
-            farPointWorld[0] - nearPointWorld[0],
-            farPointWorld[1] - nearPointWorld[1],
-            farPointWorld[2] - nearPointWorld[2]
-        )
+        val rayOrigin = Vector3(nearPointWorld[0], nearPointWorld[1], nearPointWorld[2])
+        val rayEnd = Vector3(farPointWorld[0], farPointWorld[1], farPointWorld[2])
+        val rayDirection = (rayEnd - rayOrigin).normalize()
 
-        // Очистим цвет у всех
-        for (cube in cubes) {
-            cube.resetColor()
-        }
-
-        // Найдём и перекрасим только первый попавшийся
-        for (cube in cubes) {
-            if (intersectsCube(rayOrigin, rayDir, cube)) {
-                cube.randomizeColor()
-                break
-            }
-        }
+        return rayOrigin to rayDirection
     }
+
+
+    fun getCubes(): List<Cube> = cubes
 
     private fun intersectsCube(rayOrigin: FloatArray, rayDir: FloatArray, cube: Cube): Boolean {
         val min = floatArrayOf(cube.x - 0.5f, cube.y - 0.5f, cube.z - 0.5f)
