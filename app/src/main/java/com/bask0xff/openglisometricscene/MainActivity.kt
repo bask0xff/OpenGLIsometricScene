@@ -19,11 +19,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Surface(modifier = Modifier.fillMaxSize()) {
+            OpenGLScene()
+            /*Surface(modifier = Modifier.fillMaxSize()) {
                 AndroidView(factory = { context ->
                     IsoGLSurfaceView(context)
                 })
-            }
+            }*/
         }
     }
+
+    @Composable
+    fun OpenGLScene() {
+        AndroidView(
+            factory = { context -> MyGLSurfaceView(context) },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+
 }

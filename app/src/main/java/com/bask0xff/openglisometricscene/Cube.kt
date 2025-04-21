@@ -1,81 +1,107 @@
 package com.bask0xff.openglisometricscene
 
-import android.opengl.GLES20
+import android.opengl.GLES20.*
 import android.opengl.Matrix
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
 class Cube(private val x: Float, private val y: Float, private val z: Float) {
-    private val vertices = floatArrayOf(
-        // координаты куба (упрощённые)
-        // добавь остальные стороны!
+
+    private val vertexBuffer: FloatBuffer
+    private val mvpMatrix = FloatArray(16)
+    private val modelMatrix = FloatArray(16)
+
+    private val vertexShaderCode = """
+        uniform mat4 uMVPMatrix;
+        attribute vec4 vPosition;
+        void main() {
+            gl_Position = uMVPMatrix * vPosition;
+        }
+    """
+
+    private val fragmentShaderCode = """
+        precision mediump float;
+        void main() {
+            gl_FragColor = vec4(0.2, 0.8, 1.0, 1.0);
+        }
+    """
+
+    private val program: Int
+
+    private val cubeCoords = floatArrayOf(
+        // Front face
+        -0.5f,  0.5f, 0.5f,
+        -0.5f, -0.5f, 0.5f,
+        0.5f, -0.5f, 0.5f,
+        0.5f,  0.5f, 0.5f,
+
+        // Back face
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
     )
 
-    private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
+    private val drawOrder = shortArrayOf(
+        0, 1, 2, 0, 2, 3, // front
+        4, 5, 6, 4, 6, 7, // back
+        0, 4, 7, 0, 7, 3, // top
+        1, 5, 6, 1, 6, 2, // bottom
+        0, 1, 5, 0, 5, 4, // left
+        3, 2, 6, 3, 6, 7  // right
+    )
+
+    private val indexBuffer = ByteBuffer
+        .allocateDirect(drawOrder.size * 2)
         .order(ByteOrder.nativeOrder())
-        .asFloatBuffer().apply {
-            put(vertices)
+        .asShortBuffer()
+        .apply {
+            put(drawOrder)
             position(0)
         }
 
-    private val color = floatArrayOf(0.2f, 0.6f, 1f, 1f)
-    private val program: Int
-
     init {
-        val vertexShaderCode = """
-            uniform mat4 uMVPMatrix;
-            attribute vec4 vPosition;
-            void main() {
-                gl_Position = uMVPMatrix * vPosition;
-            }
-        """.trimIndent()
+        val bb = ByteBuffer.allocateDirect(cubeCoords.size * 4)
+        bb.order(ByteOrder.nativeOrder())
+        vertexBuffer = bb.asFloatBuffer().apply {
+            put(cubeCoords)
+            position(0)
+        }
 
-        val fragmentShaderCode = """
-            precision mediump float;
-            uniform vec4 vColor;
-            void main() {
-                gl_FragColor = vColor;
-            }
-        """.trimIndent()
+        val vertexShader = loadShader(GL_VERTEX_SHADER, vertexShaderCode)
+        val fragmentShader = loadShader(GL_FRAGMENT_SHADER, fragmentShaderCode)
 
-        val vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
-        val fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
-        program = GLES20.glCreateProgram().also {
-            GLES20.glAttachShader(it, vertexShader)
-            GLES20.glAttachShader(it, fragmentShader)
-            GLES20.glLinkProgram(it)
+        program = glCreateProgram().also {
+            glAttachShader(it, vertexShader)
+            glAttachShader(it, fragmentShader)
+            glLinkProgram(it)
         }
     }
 
     fun draw(vpMatrix: FloatArray) {
-        GLES20.glUseProgram(program)
+        glUseProgram(program)
 
-        val positionHandle = GLES20.glGetAttribLocation(program, "vPosition")
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer)
+        val positionHandle = glGetAttribLocation(program, "vPosition")
+        val mvpMatrixHandle = glGetUniformLocation(program, "uMVPMatrix")
 
-        val colorHandle = GLES20.glGetUniformLocation(program, "vColor")
-        GLES20.glUniform4fv(colorHandle, 1, color, 0)
+        glEnableVertexAttribArray(positionHandle)
+        glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 3 * 4, vertexBuffer)
 
-        val mvpMatrixHandle = GLES20.glGetUniformLocation(program, "uMVPMatrix")
+        Matrix.setIdentityM(modelMatrix, 0)
+        Matrix.translateM(modelMatrix, 0, x, z, y)
+        Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
 
-        val modelMatrix = FloatArray(16).apply { Matrix.setIdentityM(this, 0) }
-        Matrix.translateM(modelMatrix, 0, x, y, z)
+        glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0)
+        glDrawElements(GL_TRIANGLES, drawOrder.size, GL_UNSIGNED_SHORT, indexBuffer)
 
-        val mvp = FloatArray(16)
-        Matrix.multiplyMM(mvp, 0, vpMatrix, 0, modelMatrix, 0)
-
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvp, 0)
-
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertices.size / 3)
-        GLES20.glDisableVertexAttribArray(positionHandle)
+        glDisableVertexAttribArray(positionHandle)
     }
 
-    private fun loadShader(type: Int, shaderCode: String): Int =
-        GLES20.glCreateShader(type).also { shader ->
-            GLES20.glShaderSource(shader, shaderCode)
-            GLES20.glCompileShader(shader)
+    private fun loadShader(type: Int, shaderCode: String): Int {
+        return glCreateShader(type).also { shader ->
+            glShaderSource(shader, shaderCode)
+            glCompileShader(shader)
         }
+    }
 }
-
