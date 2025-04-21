@@ -4,11 +4,13 @@ import android.opengl.GLES20
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
+import android.util.Log
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class MyGLRenderer : GLSurfaceView.Renderer {
 
+    private val TAG = "MyGLRenderer"
     private val cubes = mutableListOf<Cube>()
 
     private val viewMatrix = FloatArray(16)
@@ -71,6 +73,21 @@ class MyGLRenderer : GLSurfaceView.Renderer {
 
         for (cube in cubes) {
             cube.draw(vpMatrix)
+        }
+    }
+
+    fun handleTouch(x: Float, y: Float) {
+        // Преобразуем координаты экрана в мировые координаты
+        val worldX = (x / 500) - 1 // Замените на подходящую логику
+        val worldY = (y / 500) - 1 // Замените на подходящую логику
+        Log.d(TAG, "handleTouch: ($x -> $worldX), ($y -> $worldY)")
+        // Проверяем, был ли клик по одному из кубов
+        for (cube in cubes) {
+            if (worldX >= cube.x - 0.5f && worldX <= cube.x + 0.5f &&
+                worldY >= cube.y - 0.5f && worldY <= cube.y + 0.5f) {
+                // Если клик был внутри куба, меняем его цвет
+                cube.randomizeColor()
+            }
         }
     }
 }

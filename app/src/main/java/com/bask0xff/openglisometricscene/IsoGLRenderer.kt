@@ -13,10 +13,21 @@ import javax.microedition.khronos.opengles.GL10
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val cubes = mutableListOf<Cube>()
+    private val projectionMatrix = FloatArray(16)
+
+    init {
+        // Инициализация кубов
+        cubes.add(Cube(0f, 0f, 0f, floatArrayOf(1f, 0f, 0f)))  // Red
+        cubes.add(Cube(1f, 0f, 0f, floatArrayOf(0f, 1f, 0f)))  // Green
+        cubes.add(Cube(0f, 1f, 0f, floatArrayOf(0f, 0f, 1f)))  // Blue
+        cubes.add(Cube(1f, 1f, 0f, floatArrayOf(1f, 1f, 0f)))  // Yellow
+    }
 
     override fun onSurfaceCreated(gl: GL10?, p1: javax.microedition.khronos.egl.EGLConfig?) {
         GLES20.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+
+        Matrix.setIdentityM(projectionMatrix, 0)  // Инициализация проекционной матрицы
 
         val colors = listOf(
             floatArrayOf(1f, 0f, 0f, 1f), // Red
@@ -62,5 +73,22 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
+    }
+
+    //override fun onSurfaceDestroyed(gl: GL10?) {}
+
+    fun handleTouch(x: Float, y: Float) {
+        // Преобразуем координаты экрана в мировые координаты
+        val worldX = (x / 500) - 1 // Замените на подходящую логику
+        val worldY = (y / 500) - 1 // Замените на подходящую логику
+
+        // Проверяем, был ли клик по одному из кубов
+        for (cube in cubes) {
+            if (worldX >= cube.x - 0.5f && worldX <= cube.x + 0.5f &&
+                worldY >= cube.y - 0.5f && worldY <= cube.y + 0.5f) {
+                // Если клик был внутри куба, меняем его цвет
+                cube.randomizeColor()
+            }
+        }
     }
 }
