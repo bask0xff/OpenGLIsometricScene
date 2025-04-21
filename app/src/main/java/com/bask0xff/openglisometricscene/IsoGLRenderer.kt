@@ -4,6 +4,7 @@ import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.util.Log
+import com.bask0xff.openglisometricscene.ui.theme.Ball
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -16,6 +17,10 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     var surfaceWidth = 1
     var surfaceHeight = 1
+
+    private val ball = Ball(1f)
+    private var ballCube: Cube? = null
+
 
     private val nearPointNdc = FloatArray(4)
     private val farPointNdc = FloatArray(4)
@@ -66,6 +71,15 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         for (cube in cubes) {
             cube.draw(vpMatrix)
         }
+
+        ballCube?.let {
+            val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
+            val positionArray = basePosition.toFloatArray()  // Преобразуем в FloatArray
+            val color = floatArrayOf(1.0f, 0.0f, 0.0f, 1.0f)  // Красный цвет для мяча
+            ball.draw(vpMatrix, color)  // Передаем правильный массив цвета
+        }
+
+
     }
 
     // Function to handle touch and find closest cube
@@ -90,7 +104,12 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         Log.d(TAG, "handleTouch: clsect cube: ${closestCube?.x}, ${closestCube?.y}")
 
-        closestCube?.randomizeColor()
+        closestCube?.let {
+            it.randomizeColor()
+            ballCube = it
+        }
+
+
         return closestCube != null
     }
 
