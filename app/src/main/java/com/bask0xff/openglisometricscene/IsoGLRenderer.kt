@@ -53,7 +53,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         Matrix.setLookAtM(viewMatrix, 0,
             5f, 5f, 5f,
             0f, 0f, 0f,
-            0f, 1f, 0f
+            0f, 0f, 1f
         )
 
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)

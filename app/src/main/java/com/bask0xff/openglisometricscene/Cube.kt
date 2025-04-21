@@ -90,6 +90,58 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
         color = baseColor.copyOf()
     }
 
+    // Метод для пересечения луча с кубом (AABB)
+    fun intersectRayWithCube(rayOrigin: Vector3, rayDir: Vector3): Boolean {
+        var tMin = 0.0f
+        var tMax = Float.MAX_VALUE
+
+        for (i in 0 until 3) {
+            val origin = rayOrigin[i]
+            val direction = rayDir[i]
+
+            val minBound = getMin(i)  // Минимальная координата по оси
+            val maxBound = getMax(i)  // Максимальная координата по оси
+
+            var t1 = (minBound - origin) / direction
+            var t2 = (maxBound - origin) / direction
+
+            if (t1 > t2) {
+                val temp = t1
+                t1 = t2
+                t2 = temp
+            }
+
+            tMin = Math.max(tMin, t1)
+            tMax = Math.min(tMax, t2)
+
+            if (tMin > tMax) {
+                return false // Луч не пересекает куб
+            }
+        }
+
+        return true // Луч пересекает куб
+    }
+
+    // Получение минимальной координаты по оси
+    private fun getMin(axis: Int): Float {
+        return when (axis) {
+            0 -> x - 0.5f
+            1 -> y - 0.5f
+            2 -> z - 0.5f
+            else -> throw IndexOutOfBoundsException("Invalid axis")
+        }
+    }
+
+    // Получение максимальной координаты по оси
+    private fun getMax(axis: Int): Float {
+        return when (axis) {
+            0 -> x + 0.5f
+            1 -> y + 0.5f
+            2 -> z + 0.5f
+            else -> throw IndexOutOfBoundsException("Invalid axis")
+        }
+    }
+
     private fun loadShader(type: Int, shaderCode: String): Int {
         return glCreateShader(type).also {
             glShaderSource(it, shaderCode)
