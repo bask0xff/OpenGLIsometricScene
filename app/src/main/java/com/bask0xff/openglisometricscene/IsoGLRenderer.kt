@@ -21,6 +21,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     var surfaceWidth = 1
     var surfaceHeight = 1
 
+    private val nearPointNdc = FloatArray(4)
+    private val farPointNdc = FloatArray(4)
+
     override fun onSurfaceCreated(gl: GL10?, p1: javax.microedition.khronos.egl.EGLConfig?) {
         GLES20.glClearColor(0.2f, 0.2f, 0.2f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
@@ -95,30 +98,83 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     //override fun onSurfaceDestroyed(gl: GL10?) {}
 
     fun handleTouch(screenX: Float, screenY: Float) {
-        // Нормализуем координаты экрана в [-1, 1]
-        val normalizedX = (2f * screenX) / surfaceWidth - 1f
-        val normalizedY = 1f - (2f * screenY) / surfaceHeight
+        // Преобразование координат экрана в Normalized Device Coordinates [-1, 1]
+        val x = (2f * screenX) / surfaceWidth - 1f
+        val y = 1f - (2f * screenY) / surfaceHeight
 
-        // Преобразуем в мировые координаты через обратную матрицу проекции-вида
+        // Z = -1 (near plane), Z = 1 (far plane)
+        nearPointNdc[0] = x
+        nearPointNdc[1] = y
+        nearPointNdc[2] = -1f
+        nearPointNdc[3] = 1f
+
+        farPointNdc[0] = x
+        farPointNdc[1] = y
+        farPointNdc[2] = 1f
+        farPointNdc[3] = 1f
+
         val invertedVPMatrix = FloatArray(16)
         Matrix.invertM(invertedVPMatrix, 0, vpMatrix, 0)
 
-        // Z = 0 (на плоскости XY)
-        val nearPoint = floatArrayOf(normalizedX, normalizedY, 0f, 1f)
-        val worldPoint = FloatArray(4)
-        Matrix.multiplyMV(worldPoint, 0, invertedVPMatrix, 0, nearPoint, 0)
+        val nearPointWorld = FloatArray(4)
+        val farPointWorld = FloatArray(4)
 
-        val worldX = worldPoint[0] / worldPoint[3]
-        val worldY = worldPoint[1] / worldPoint[3]
+        Matrix.multiplyMV(nearPointWorld, 0, invertedVPMatrix, 0, nearPointNdc, 0)
+        Matrix.multiplyMV(farPointWorld, 0, invertedVPMatrix, 0, farPointNdc, 0)
 
-        Log.d("Touch", "World coords: x=$worldX, y=$worldY")
+        for (i in 0..2) {
+            nearPointWorld[i] /= nearPointWorld[3]
+            farPointWorld[i] /= farPointWorld[3]
+        }
 
+        // Направление луча
+        val rayOrigin = floatArrayOf(nearPointWorld[0], nearPointWorld[1], nearPointWorld[2])
+        val rayDirection = floatArrayOf(
+            farPointWorld[0] - nearPointWorld[0],
+            farPointWorld[1] - nearPointWorld[1],
+            farPointWorld[2] - nearPointWorld[2]
+        )
+
+        // Проверка пересечения луча с каждым кубом
         for (cube in cubes) {
-            if (worldX >= cube.x - 0.5f && worldX <= cube.x + 0.5f &&
-                worldY >= cube.y - 0.5f && worldY <= cube.y + 0.5f) {
+            if (intersectsCube(rayOrigin, rayDirection, cube)) {
                 cube.randomizeColor()
+                break
             }
         }
     }
+
+    private fun intersectsCube(rayOrigin: FloatArray, rayDir: FloatArray, cube: Cube): Boolean {
+        val min = floatArrayOf(cube.x - 0.5f, cube.y - 0.5f, cube.z - 0.5f)
+        val max = floatArrayOf(cube.x + 0.5f, cube.y + 0.5f, cube.z + 0.5f)
+
+        var tmin = (min[0] - rayOrigin[0]) / rayDir[0]
+        var tmax = (max[0] - rayOrigin[0]) / rayDir[0]
+
+        if (tmin > tmax) {
+            val temp = tmin
+            tmin = tmax
+            tmax = temp
+        }
+
+        for (i in 1..2) {
+            var t1 = (min[i] - rayOrigin[i]) / rayDir[i]
+            var t2 = (max[i] - rayOrigin[i]) / rayDir[i]
+
+            if (t1 > t2) {
+                val temp = t1
+                t1 = t2
+                t2 = temp
+            }
+
+            if (t1 > tmin) tmin = t1
+            if (t2 < tmax) tmax = t2
+
+            if (tmin > tmax) return false
+        }
+
+        return true
+    }
+
 
 }
