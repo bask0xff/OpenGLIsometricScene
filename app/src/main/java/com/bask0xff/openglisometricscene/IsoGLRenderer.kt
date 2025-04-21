@@ -1,20 +1,15 @@
 package com.bask0xff.openglisometricscene
 
-import android.opengl.EGLConfig
-import android.opengl.GLES10.GL_COLOR_BUFFER_BIT
-import android.opengl.GLES10.GL_DEPTH_BUFFER_BIT
-import android.opengl.GLES10.glClear
-import android.opengl.GLES10.glClearColor
-import android.opengl.GLES20
+import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.util.Log
+import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val cubes = mutableListOf<Cube>()
     private val projectionMatrix = FloatArray(16)
-
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
 
@@ -24,11 +19,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private val nearPointNdc = FloatArray(4)
     private val farPointNdc = FloatArray(4)
 
-    override fun onSurfaceCreated(gl: GL10?, p1: javax.microedition.khronos.egl.EGLConfig?) {
-        GLES20.glClearColor(0.2f, 0.2f, 0.2f, 1f)
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST)
-
-        Matrix.setIdentityM(projectionMatrix, 0)  // Инициализация проекционной матрицы
+    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        glClearColor(0.2f, 0.2f, 0.2f, 1f)
+        glEnable(GL_DEPTH_TEST)
 
         val colors = listOf(
             floatArrayOf(1f, 0f, 0f, 1f), // Red
@@ -49,60 +42,35 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         }
     }
 
-    private fun updateProjectionMatrix(width: Int, height: Int) {
-        val ratio = width.toFloat() / height
-        // Простая ортографическая проекция (прямоугольная)
-        Matrix.orthoM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, -10f, 10f)
-        Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-    }
-
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        GLES20.glViewport(0, 0, width, height)
-
+        glViewport(0, 0, width, height)
         surfaceWidth = width
         surfaceHeight = height
-        updateProjectionMatrix(width, height)
 
-        val ratio: Float = width.toFloat() / height.toFloat()
+        val ratio = width.toFloat() / height
+        Matrix.orthoM(projectionMatrix, 0, -ratio * 5, ratio * 5, -5f, 5f, -10f, 10f)
 
-        Matrix.setIdentityM(projectionMatrix, 0)
-        Matrix.orthoM(
-            projectionMatrix, 0,
-            -ratio * 5, ratio * 5, // left, right
-            -5f, 5f,               // bottom, top
-            -10f, 10f              // near, far
+        Matrix.setLookAtM(viewMatrix, 0,
+            5f, 5f, 5f,
+            0f, 0f, 0f,
+            0f, 1f, 0f
         )
 
-        // Камера в изометрической позиции: смотрит под углом сверху
-        Matrix.setLookAtM(
-            viewMatrix, 0,
-            5f, 5f, 5f,     // eye
-            0f, 0f, 0f,     // center
-            0f, 1f, 0f      // up
-        )
-
-        // multiply projection and view to get final MVP matrix
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
     }
 
-
-    override fun onDrawFrame(unused: GL10?) {
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+    override fun onDrawFrame(gl: GL10?) {
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-
         for (cube in cubes) {
             cube.draw(vpMatrix)
         }
     }
 
-    //override fun onSurfaceDestroyed(gl: GL10?) {}
-
     fun handleTouch(screenX: Float, screenY: Float) {
-        // Преобразование координат экрана в Normalized Device Coordinates [-1, 1]
         val x = (2f * screenX) / surfaceWidth - 1f
         val y = 1f - (2f * screenY) / surfaceHeight
 
-        // Z = -1 (near plane), Z = 1 (far plane)
         nearPointNdc[0] = x
         nearPointNdc[1] = y
         nearPointNdc[2] = -1f
@@ -127,17 +95,21 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             farPointWorld[i] /= farPointWorld[3]
         }
 
-        // Направление луча
         val rayOrigin = floatArrayOf(nearPointWorld[0], nearPointWorld[1], nearPointWorld[2])
-        val rayDirection = floatArrayOf(
+        val rayDir = floatArrayOf(
             farPointWorld[0] - nearPointWorld[0],
             farPointWorld[1] - nearPointWorld[1],
             farPointWorld[2] - nearPointWorld[2]
         )
 
-        // Проверка пересечения луча с каждым кубом
+        // Очистим цвет у всех
         for (cube in cubes) {
-            if (intersectsCube(rayOrigin, rayDirection, cube)) {
+            cube.resetColor()
+        }
+
+        // Найдём и перекрасим только первый попавшийся
+        for (cube in cubes) {
+            if (intersectsCube(rayOrigin, rayDir, cube)) {
                 cube.randomizeColor()
                 break
             }
@@ -151,30 +123,19 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         var tmin = (min[0] - rayOrigin[0]) / rayDir[0]
         var tmax = (max[0] - rayOrigin[0]) / rayDir[0]
 
-        if (tmin > tmax) {
-            val temp = tmin
-            tmin = tmax
-            tmax = temp
-        }
+        if (tmin > tmax) tmin = tmax.also { tmax = tmin }
 
         for (i in 1..2) {
             var t1 = (min[i] - rayOrigin[i]) / rayDir[i]
             var t2 = (max[i] - rayOrigin[i]) / rayDir[i]
 
-            if (t1 > t2) {
-                val temp = t1
-                t1 = t2
-                t2 = temp
-            }
+            if (t1 > t2) t1 = t2.also { t2 = t1 }
 
             if (t1 > tmin) tmin = t1
             if (t2 < tmax) tmax = t2
-
             if (tmin > tmax) return false
         }
 
-        return true
+        return tmax > 0
     }
-
-
 }
