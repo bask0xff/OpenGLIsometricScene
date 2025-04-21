@@ -5,12 +5,13 @@ import android.opengl.Matrix
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import kotlin.random.Random
 
 class Cube(
-    private val x: Float,
-    private val y: Float,
-    private val z: Float,
-    private val color: FloatArray // RGBA
+    val x: Float,
+    val y: Float,
+    val z: Float,
+    var color: FloatArray
 ) {
 
     private val vertexBuffer: FloatBuffer
@@ -113,5 +114,11 @@ class Cube(
             glShaderSource(shader, shaderCode)
             glCompileShader(shader)
         }
+    }
+
+    fun randomizeColor() {
+        color[0] = Random.nextFloat()  // Red
+        color[1] = Random.nextFloat()  // Green
+        color[2] = Random.nextFloat()  // Blue
     }
 }
