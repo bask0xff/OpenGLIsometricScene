@@ -8,11 +8,11 @@ import android.view.MotionEvent
 class MyGLSurfaceView(context: Context) : GLSurfaceView(context) {
 
     private val TAG = "MyGLSurfaceView"
-    private val renderer: MyGLRenderer
+    private val renderer: IsoGLRenderer
 
     init {
         setEGLContextClientVersion(2)
-        renderer = MyGLRenderer()
+        renderer = IsoGLRenderer()
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
     }
