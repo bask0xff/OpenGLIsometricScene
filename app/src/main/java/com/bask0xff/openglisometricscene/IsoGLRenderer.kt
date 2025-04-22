@@ -11,6 +11,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
+import kotlin.random.Random
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val TAG = "IsoGLRenderer"
@@ -92,7 +93,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         for (x in 0..4) {
             for (y in 0..4) {
                 val color = colors.random()
-                cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
+                if(Random.nextFloat() < 0.3f)
+                    cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
             }
         }
 
