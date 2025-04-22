@@ -79,7 +79,6 @@ class Ball(private val radius: Float) {
     }
 
     fun draw(mvpMatrix: FloatArray, color: FloatArray) {
-        //Log.d(TAG, "draw: BAll ------>")
         glUseProgram(program)
 
         // Получаем атрибуты и униформы

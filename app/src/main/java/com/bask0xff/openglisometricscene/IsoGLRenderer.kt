@@ -32,6 +32,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private var positionHandle = 0
     private var uMVPMatrixHandle = 0
 
+    private var rotationAngle: Float = 0f
+
     private var sphereCoords = FloatArray(1000) // Массив для шара
 
     // Матрица для проекции и видовых преобразований
@@ -93,12 +95,12 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         for (x in 0..4) {
             for (y in 0..4) {
                 val color = colors.random()
-                if(Random.nextFloat() < 0.3f)
+                //if(Random.nextFloat() < 0.3f)
                     cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
             }
         }
 
-        ball = Ball(3f)
+        ball = Ball(1f)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -128,17 +130,17 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     // Рисование треугольника
     private fun drawTriangle() {
         // Код для рисования треугольника с использованием OpenGL
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, triangleBuffer)
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3)
+        glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 0, triangleBuffer)
+        glEnableVertexAttribArray(positionHandle)
+        glDrawArrays(GL_TRIANGLES, 0, 3)
     }
 
     // Рисование шара
     private fun drawSphere() {
         // Код для рисования шара с использованием OpenGL
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, sphereBuffer)
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, sphereCoords.size / 3)
+        glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 0, sphereBuffer)
+        glEnableVertexAttribArray(positionHandle)
+        glDrawArrays(GL_TRIANGLES, 0, sphereCoords.size / 3)
     }
 
     // Функция для генерации координат для сферы
@@ -207,6 +209,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         // Рисуем шар
         drawSphere()
+
     }
 
     // Function to handle touch and find closest cube
