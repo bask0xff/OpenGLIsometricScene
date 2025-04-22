@@ -103,7 +103,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         for (x in 0..4) {
             for (y in 0..4) {
-                var height = Random.nextFloat() * 2f  // Генерация случайной высоты от 0 до 5
+                var height = Random.nextFloat() * 1f  // Генерация случайной высоты от 0 до 5
                 for (z in 0..height.toInt()) {
                     val color = colors.random()
 
