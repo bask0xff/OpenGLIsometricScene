@@ -18,7 +18,6 @@ class MyGLSurfaceView(context: Context) : GLSurfaceView(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        //Log.d(TAG, "onTouchEvent: $x , $y")
         if (event.action == MotionEvent.ACTION_DOWN) {
             val x = event.x
             val y = event.y

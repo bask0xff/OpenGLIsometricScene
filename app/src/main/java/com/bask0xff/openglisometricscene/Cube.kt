@@ -16,8 +16,8 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
 
     private val program: Int
 
-    val h = 0.5f;
     val a = 0.5f;
+    val h = 0.5f;
 
     private val cubeCoords = floatArrayOf(
         -a, a, h,
