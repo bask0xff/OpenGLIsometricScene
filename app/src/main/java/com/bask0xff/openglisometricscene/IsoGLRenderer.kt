@@ -5,6 +5,7 @@ import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import com.bask0xff.openglisometricscene.ui.theme.Ball
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -49,13 +50,21 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private val modelMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
 
-
+    private val cube = Cube(0f,0f,0f, floatArrayOf(1f, 0f, 0f, 1f))
     private var ballCube: Cube? = null
 
     private val nearPointNdc = FloatArray(4)
     private val farPointNdc = FloatArray(4)
 
+    private val heightMap = Array(10) { IntArray(10) }
+
     init {
+        // Генерация случайных значений для каждой точки (высота башни)
+        for (i in 0 until 10) {
+            for (j in 0 until 10) {
+                heightMap[i][j] = (1..5).random()  // Высоты от 1 до 5
+            }
+        }
         // Генерация буфера для треугольника
         triangleBuffer = ByteBuffer.allocateDirect(triangleCoords.size * 4)
             .order(ByteOrder.nativeOrder())
@@ -94,14 +103,25 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         for (x in 0..4) {
             for (y in 0..4) {
-                val color = colors.random()
-                //if(Random.nextFloat() < 0.3f)
-                    cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
+                for (z in 0..3) {
+                    val color = colors.random()
+                    var height = Random.nextFloat() * 5f  // Генерация случайной высоты от 0 до 5
+                    height = z.toFloat()
+                    cubes.add(
+                        Cube(
+                            x.toFloat(),
+                            y.toFloat(),
+                            height,
+                            color
+                        )
+                    )  // Добавляем куб с высотой
+                }
             }
         }
 
         ball = Ball(1f)
     }
+
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         glViewport(0, 0, width, height)
@@ -171,6 +191,20 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     override fun onDrawFrame(gl: GL10?) {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+
+        // Отрисовываем башни
+        for (i in 0 until 10) {
+            for (j in 0 until 10) {
+                val height = heightMap[i][j]
+                for (k in 0 until height) {
+                    gl?.glPushMatrix()
+                    // Убедитесь, что все параметры переданы правильно
+                    gl?.glTranslatef(i.toFloat(), (k * 1.0f).toFloat(), j.toFloat()) // Высота увеличивается по оси Y
+                    //cube.draw()  // Рисуем куб
+                    gl?.glPopMatrix()
+                }
+            }
+        }
 
         // Логируем позицию мяча
         ballCube?.let {
