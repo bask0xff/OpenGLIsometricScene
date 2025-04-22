@@ -6,15 +6,36 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import android.opengl.GLES20.*
 import android.util.Log
+import java.nio.ShortBuffer
 
 object GLUtils {
-    fun createFloatBuffer(coords: FloatArray): FloatBuffer {
+    /*fun createFloatBuffer(coords: FloatArray): FloatBuffer {
         val bb = ByteBuffer.allocateDirect(coords.size * 4)
         bb.order(ByteOrder.nativeOrder())
         val fb = bb.asFloatBuffer()
         fb.put(coords)
         fb.position(0)
         return fb
+    }*/
+
+    // Функция для создания FloatBuffer
+    fun createFloatBuffer(data: FloatArray): FloatBuffer {
+        val buffer = ByteBuffer.allocateDirect(data.size * 4)
+        buffer.order(ByteOrder.nativeOrder())
+        val floatBuffer = buffer.asFloatBuffer()
+        floatBuffer.put(data)
+        floatBuffer.position(0)
+        return floatBuffer
+    }
+
+    // Функция для создания ShortBuffer
+    fun createShortBuffer(data: ShortArray): ShortBuffer {
+        val buffer = ByteBuffer.allocateDirect(data.size * 2)
+        buffer.order(ByteOrder.nativeOrder())
+        val shortBuffer = buffer.asShortBuffer()
+        shortBuffer.put(data)
+        shortBuffer.position(0)
+        return shortBuffer
     }
 
     fun createProgram(vertexShaderCode: String, fragmentShaderCode: String): Int {

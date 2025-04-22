@@ -1,10 +1,14 @@
 package com.bask0xff.openglisometricscene
 
+import android.opengl.GLES20
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.util.Log
 import com.bask0xff.openglisometricscene.ui.theme.Ball
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -18,16 +22,59 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     var surfaceWidth = 1
     var surfaceHeight = 1
 
-    private val ball = Ball(1f)
-    private var ballCube: Cube? = null
+    private val triangleCoords = floatArrayOf(
+        0.0f, 1.0f, 0.0f, // Вершина 1
+        -1.0f, -1.0f, 0.0f, // Вершина 2
+        1.0f, -1.0f, 0.0f  // Вершина 3
+    )
+    // Обработчики шейдеров (вам нужно будет их добавить)
+    private var positionHandle = 0
+    private var uMVPMatrixHandle = 0
 
+    private var sphereCoords = FloatArray(1000) // Массив для шара
+
+    // Матрица для проекции и видовых преобразований
+    private val mMVPMatrix = FloatArray(16)
+    private val mProjectionMatrix = FloatArray(16)
+    private val mViewMatrix = FloatArray(16)
+
+    private val triangleBuffer: FloatBuffer
+    private val sphereBuffer: FloatBuffer
+
+    private var ball = Ball(10f)
+    private lateinit var testTriangle: TestTriangle
+    private val modelMatrix = FloatArray(16)
+    private val mvpMatrix = FloatArray(16)
+
+
+    private var ballCube: Cube? = null
 
     private val nearPointNdc = FloatArray(4)
     private val farPointNdc = FloatArray(4)
 
+    init {
+        // Генерация буфера для треугольника
+        triangleBuffer = ByteBuffer.allocateDirect(triangleCoords.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+        triangleBuffer.put(triangleCoords).position(0)
+
+        // Генерация данных для шара
+        generateSphereCoordinates(1.0f)
+        sphereBuffer = ByteBuffer.allocateDirect(sphereCoords.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+        sphereBuffer.put(sphereCoords).position(0)
+    }
+
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         glClearColor(0.2f, 0.2f, 0.2f, 1f)
         glEnable(GL_DEPTH_TEST)
+
+        // Устанавливаем начальные значения для матриц
+        Matrix.setIdentityM(mMVPMatrix, 0)
+        Matrix.setIdentityM(mProjectionMatrix, 0)
+        Matrix.setIdentityM(mViewMatrix, 0)
 
         val colors = listOf(
             floatArrayOf(1f, 0f, 0f, 1f), // Red
@@ -40,12 +87,16 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             floatArrayOf(0.6f, 0f, 1f, 1f)  // Violet
         )
 
+        testTriangle = TestTriangle()
+
         for (x in 0..4) {
             for (y in 0..4) {
                 val color = colors.random()
                 cubes.add(Cube(x.toFloat(), y.toFloat(), 0f, color))
             }
         }
+
+        ball = Ball(3f)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -63,23 +114,97 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         )
 
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+
+        /*
+        // Настройка проекционной матрицы
+        Matrix.frustumM(mProjectionMatrix, 0, -ratio, ratio, -1f, 1f, 3f, 7f)
+        Matrix.setLookAtM(mViewMatrix, 0, 0f, 0f, -5f, 0f, 0f, 0f, 0f, 1f, 0f)
+        Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0)
+        */
     }
+
+    // Рисование треугольника
+    private fun drawTriangle() {
+        // Код для рисования треугольника с использованием OpenGL
+        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, triangleBuffer)
+        GLES20.glEnableVertexAttribArray(positionHandle)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3)
+    }
+
+    // Рисование шара
+    private fun drawSphere() {
+        // Код для рисования шара с использованием OpenGL
+        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, sphereBuffer)
+        GLES20.glEnableVertexAttribArray(positionHandle)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, sphereCoords.size / 3)
+    }
+
+    // Функция для генерации координат для сферы
+    private fun generateSphereCoordinates(radius: Float) {
+        val sphereList = mutableListOf<Float>() // Используем ArrayList для динамического добавления данных
+        val slices = 20 // Количество срезов
+        val stacks = 20 // Количество высот
+        for (i in 0 until stacks) {
+            val phi = Math.PI * (i / (stacks - 1).toDouble()) // Угол по высоте
+            for (j in 0 until slices) {
+                val theta = 2.0 * Math.PI * (j / slices.toDouble()) // Угол по окружности
+                val x = (radius * Math.sin(phi) * Math.cos(theta)).toFloat()
+                val y = (radius * Math.sin(phi) * Math.sin(theta)).toFloat()
+                val z = (radius * Math.cos(phi)).toFloat()
+
+                // Добавляем координаты в список
+                sphereList.add(x)
+                sphereList.add(y)
+                sphereList.add(z)
+            }
+        }
+
+        // Преобразуем список в массив
+        sphereCoords = sphereList.toFloatArray()
+    }
+
 
     override fun onDrawFrame(gl: GL10?) {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+
+        // Логируем позицию мяча
+        ballCube?.let {
+            val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
+            //Log.d(TAG, "Ball position: ${basePosition.x}, ${basePosition.y}, ${basePosition.z}") // Позиция мяча в логе
+
+            val modelMatrix = FloatArray(16)
+            Matrix.setIdentityM(modelMatrix, 0)
+            Matrix.translateM(modelMatrix, 0, basePosition.x, basePosition.y, basePosition.z)
+            Matrix.scaleM(modelMatrix, 0, 3.0f, 3.0f, 3.0f) // увеличиваем в 3 раза
+
+            val mvpMatrix = FloatArray(16)
+            Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
+
+            val positionArray = basePosition.toFloatArray()  // Преобразуем в FloatArray
+            val color = floatArrayOf(1.0f, 0.0f, 0.0f, 1.0f)  // Красный цвет для мяча
+            //ball.draw(vpMatrix, color)  /
+            //ball.draw(mvpMatrix, color)
+            //testTriangle.draw(vpMatrix)
+
+
+            Matrix.setIdentityM(modelMatrix, 0)
+            Matrix.translateM(modelMatrix, 0, 2f, 2f, 0f) // Помещаем рядом с кубами
+            Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
+
+            testTriangle.draw(mvpMatrix)
+
+        }
+
         for (cube in cubes) {
             cube.draw(vpMatrix)
         }
 
-        ballCube?.let {
-            val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
-            val positionArray = basePosition.toFloatArray()  // Преобразуем в FloatArray
-            val color = floatArrayOf(1.0f, 0.0f, 0.0f, 1.0f)  // Красный цвет для мяча
-            ball.draw(vpMatrix, color)  // Передаем правильный массив цвета
-        }
+        // Рисуем треугольник
+        drawTriangle()
 
-
+        // Рисуем шар
+        drawSphere()
     }
 
     // Function to handle touch and find closest cube
