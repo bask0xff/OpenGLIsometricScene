@@ -34,74 +34,75 @@ class Ball(private val radius: Float) {
     private val indices: ShortArray
 
     init {
-        // Генерируем вершины для шара (геодезическая сетка или просто треугольники)
-        val numSlices = 20
-        val numStacks = 20
+        val numSlices = 40
+        val numStacks = 40
+
         val vertexList = mutableListOf<Float>()
         val indexList = mutableListOf<Short>()
 
+        // Генерация вершин
         for (i in 0..numStacks) {
             val phi = Math.PI * i / numStacks
-            val z = radius * cos(phi.toFloat())
-            val r = radius * sin(phi.toFloat())
+            val z = radius * cos(phi).toFloat()
+            val r = radius * sin(phi).toFloat()
 
-            for (j in 0..numSlices) {
+            for (j in 0 until numSlices) { // <= важно: до numSlices, без включения последней точки
                 val theta = 2.0 * Math.PI * j / numSlices
-                val x = r * cos(theta.toFloat())
-                val y = r * sin(theta.toFloat())
+                val x = r * cos(theta).toFloat()
+                val y = r * sin(theta).toFloat()
+
                 vertexList.add(x)
                 vertexList.add(y)
                 vertexList.add(z)
             }
         }
 
-        // Создание индексов для треугольников
+        // Генерация индексов
         for (i in 0 until numStacks) {
             for (j in 0 until numSlices) {
-                val first = (i * (numSlices + 1)) + j
-                val second = first + numSlices + 1
-                indexList.add(first.toShort())
-                indexList.add(second.toShort())
-                indexList.add((first + 1).toShort())
+                val first = i * numSlices + j
+                val second = first + numSlices
 
-                indexList.add(second.toShort())
-                indexList.add((second + 1).toShort())
-                indexList.add((first + 1).toShort())
+                val next = (j + 1) % numSlices
+
+                indexList.add(first.toShort())
+                indexList.add((second + next - j).toShort())
+                indexList.add((first + next - j).toShort())
+
+                indexList.add((second + next - j).toShort())
+                indexList.add((second).toShort())
+                indexList.add((first + next - j).toShort())
             }
         }
 
-        // Преобразуем список в массивы
         vertices = vertexList.toFloatArray()
         indices = indexList.toShortArray()
 
-        // Загружаем шейдеры и создаём программу
+        // Создание программы OpenGL
         program = GLUtils.createProgram(vertexShaderCode, fragmentShaderCode)
     }
 
     fun draw(mvpMatrix: FloatArray, color: FloatArray) {
+        glEnable(GL_DEPTH_TEST)
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+
         glUseProgram(program)
 
-        // Получаем атрибуты и униформы
         positionHandle = glGetAttribLocation(program, "vPosition")
         mvpMatrixHandle = glGetUniformLocation(program, "uMVPMatrix")
         colorHandle = glGetUniformLocation(program, "uColor")
 
-        // Устанавливаем значения униформ
         glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0)
         glUniform4fv(colorHandle, 1, color, 0)
 
-        // Создаем буфер для вершин
         val vertexBuffer = GLUtils.createFloatBuffer(vertices)
+        val indexBuffer = GLUtils.createShortBuffer(indices)
+
         glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 0, vertexBuffer)
         glEnableVertexAttribArray(positionHandle)
 
-        // Создаем буфер для индексов
-        val indexBuffer = GLUtils.createShortBuffer(indices)
-
-        // Отрисовываем объект
         glDrawElements(GL_TRIANGLES, indices.size, GL_UNSIGNED_SHORT, indexBuffer)
 
-        // Отключаем атрибуты
         glDisableVertexAttribArray(positionHandle)
     }
 }
