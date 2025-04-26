@@ -108,10 +108,12 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     val color = colors.random()
 
                     height = z.toFloat()
+                    // TODO: change it, based on cubeSize()
+                    val offset = 0.63f
                     cubes.add(
                         Cube(
-                            x.toFloat() * 0.25f,
-                            y.toFloat() * 0.25f,
+                            x.toFloat() * offset,
+                            y.toFloat() * offset,
                             height,
                             color
                         )

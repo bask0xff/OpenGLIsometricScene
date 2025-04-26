@@ -16,8 +16,8 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
 
     private val program: Int
 
-    private val _cubeSize = 0.1f;
-    private val cubeHeight = 0.1f;
+    private val _cubeSize = 0.3f;
+    private val cubeHeight = 0.3f;
 
     fun cubeSize(): Float {
         return _cubeSize
@@ -71,8 +71,9 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
     }
 
     fun draw(vpMatrix: FloatArray) {
+        val offset = 1f // 2/3f
         Matrix.setIdentityM(modelMatrix, 0)
-        Matrix.translateM(modelMatrix, 0, x, y, z)
+        Matrix.translateM(modelMatrix, 0, x * offset, y * offset, z * offset)
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
 
         glUseProgram(program)
