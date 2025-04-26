@@ -56,6 +56,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private val nearPointNdc = FloatArray(4)
     private val farPointNdc = FloatArray(4)
 
+    var fieldSizeX = 5
+    var fieldSizeY = 5
+    var cubeSize = 0.5f
+
+
     private val heightMap = Array(10) { IntArray(10) }
 
     init {
