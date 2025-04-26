@@ -16,8 +16,8 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
 
     private val program: Int
 
-    private val _cubeSize = 0.3f;
-    private val cubeHeight = 0.3f;
+    private val _cubeSize = 0.5f;
+    private val cubeHeight = 0.5f;
 
     fun cubeSize(): Float {
         return _cubeSize

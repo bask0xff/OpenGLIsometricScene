@@ -109,7 +109,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
                     height = z.toFloat()
                     // TODO: change it, based on cubeSize()
-                    val offset = 0.63f
+                    var offset = 0.63f
+                    offset = 1f // for 0.5 size
                     cubes.add(
                         Cube(
                             x.toFloat() * offset,
