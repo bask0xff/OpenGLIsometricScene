@@ -202,7 +202,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     gl?.glPushMatrix()
                     // Убедитесь, что все параметры переданы правильно
                     gl?.glTranslatef(i.toFloat(), (k * 1.0f).toFloat(), j.toFloat()) // Высота увеличивается по оси Y
-                    //cube.draw()  // Рисуем куб
+                    //cube.draw(vpMatrix)  // Рисуем куб
                     gl?.glPopMatrix()
                 }
             }
