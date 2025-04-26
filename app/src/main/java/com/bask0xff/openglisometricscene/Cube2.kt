@@ -8,8 +8,8 @@ import java.nio.FloatBuffer
 
 class Cube2(private val x: Float, private val y: Float, private val z: Float) {
     private val vertices = floatArrayOf(
-        // координаты куба (упрощённые)
-        // добавь остальные стороны!
+        // cube coordinates
+        // add other sides
     )
 
     private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4)

@@ -16,18 +16,22 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
 
     private val program: Int
 
-    val a = 0.5f;
-    val h = 0.5f;
+    private val _cubeSize = 0.1f;
+    private val cubeHeight = 0.1f;
+
+    fun cubeSize(): Float {
+        return _cubeSize
+    }
 
     private val cubeCoords = floatArrayOf(
-        -a, a, h,
-        -a, -a, h,
-        a, -a, h,
-        a, a, h,
-        -a, a, -h,
-        -a, -a, -h,
-        a, -a, -h,
-        a, a, -h
+        -_cubeSize, _cubeSize, cubeHeight,
+        -_cubeSize, -_cubeSize, cubeHeight,
+        _cubeSize, -_cubeSize, cubeHeight,
+        _cubeSize, _cubeSize, cubeHeight,
+        -_cubeSize, _cubeSize, -cubeHeight,
+        -_cubeSize, -_cubeSize, -cubeHeight,
+        _cubeSize, -_cubeSize, -cubeHeight,
+        _cubeSize, _cubeSize, -cubeHeight
     )
 
     private val drawOrder = shortArrayOf(
@@ -109,18 +113,18 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
     // Функции для нахождения минимальных и максимальных координат по каждой оси
     fun getMin(axis: Int): Float {
         return when (axis) {
-            0 -> x - 0.5f
-            1 -> y - 0.5f
-            2 -> z - 0.5f
+            0 -> x - _cubeSize
+            1 -> y - _cubeSize
+            2 -> z - _cubeSize
             else -> throw IllegalArgumentException("Invalid axis")
         }
     }
 
     fun getMax(axis: Int): Float {
         return when (axis) {
-            0 -> x + 0.5f
-            1 -> y + 0.5f
-            2 -> z + 0.5f
+            0 -> x + _cubeSize
+            1 -> y + _cubeSize
+            2 -> z + _cubeSize
             else -> throw IllegalArgumentException("Invalid axis")
         }
     }

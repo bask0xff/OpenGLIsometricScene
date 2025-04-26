@@ -110,8 +110,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     height = z.toFloat()
                     cubes.add(
                         Cube(
-                            x.toFloat(),
-                            y.toFloat(),
+                            x.toFloat() * 0.25f,
+                            y.toFloat() * 0.25f,
                             height,
                             color
                         )
@@ -188,7 +188,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         sphereCoords = sphereList.toFloatArray()
     }
 
-
     override fun onDrawFrame(gl: GL10?) {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
@@ -231,7 +230,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             Matrix.translateM(modelMatrix, 0, 2f, 2f, 0f) // Помещаем рядом с кубами
             Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
 
-            testTriangle.draw(mvpMatrix)
+            //testTriangle.draw(mvpMatrix)
 
         }
 
@@ -240,10 +239,10 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         }
 
         // Рисуем треугольник
-        drawTriangle()
+        //drawTriangle()
 
         // Рисуем шар
-        drawSphere()
+        //()
 
     }
 
@@ -273,7 +272,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             it.randomizeColor()
             ballCube = it
         }
-
 
         return closestCube != null
     }
