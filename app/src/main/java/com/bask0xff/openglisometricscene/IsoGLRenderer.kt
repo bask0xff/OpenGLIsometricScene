@@ -200,14 +200,18 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             for (j in 0 until 10) {
                 val height = heightMap[i][j]
                 for (k in 0 until height) {
-                    gl?.glPushMatrix()
-                    // Убедитесь, что все параметры переданы правильно
-                    gl?.glTranslatef(i.toFloat(), (k * 1.0f).toFloat(), j.toFloat()) // Высота увеличивается по оси Y
-                    //cube.draw(vpMatrix)  // Рисуем куб
-                    gl?.glPopMatrix()
+                    val modelMatrix = FloatArray(16)
+                    Matrix.setIdentityM(modelMatrix, 0)
+                    Matrix.translateM(modelMatrix, 0, i.toFloat(), k.toFloat(), j.toFloat())
+
+                    val mvpMatrix = FloatArray(16)
+                    Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
+
+                    cube.draw(mvpMatrix) // Передаём финальную матрицу в отрисовку куба
                 }
             }
         }
+
 
         // Логируем позицию мяча
         ballCube?.let {
