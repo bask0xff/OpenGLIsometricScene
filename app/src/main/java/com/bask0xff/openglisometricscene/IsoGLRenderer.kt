@@ -106,7 +106,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         testTriangle = TestTriangle()
 
-        val cells = 15
+        val cells = 5
         for (x in 0..cells-1) {
             for (y in 0..cells-1) {
                 var height = Random.nextFloat() * 1f  // Генерация случайной высоты от 0 до 5
@@ -118,6 +118,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     var offset = 0.63f
                     offset = 1f // for 0.5 size
                     offset = 0.20f
+                    offset = 0.60f
                     //if(x == 0 || x == 4 || y == 0 || y == 4)
                     //if (Random.nextFloat() > 0.3f)
                         cubes.add(
