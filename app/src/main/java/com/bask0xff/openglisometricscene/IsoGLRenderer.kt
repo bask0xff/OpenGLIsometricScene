@@ -19,6 +19,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private val TAG = "IsoGLRenderer"
     private val cubes = mutableListOf<Cube>()
     private var smallCube: Cube? = null
+    private var parentCube: Cube? = null // Куб, на котором находится маленький кубик
     val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
@@ -109,7 +110,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             var cubeCount = 0
             for (x in 0 until cells) {
                 for (y in 0 until cells) {
-                    var height = Random.nextFloat() * 3f
+                    var height = Random.nextFloat() * 7f
                     for (z in 0..height.toInt()) {
                         val color = colors.random()
                         val offset = 0.60f
@@ -130,15 +131,16 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
             if (cubes.isNotEmpty()) {
                 val randomCube = cubes.random()
-                val smallCubeSize = 0.0f
+                val smallCubeSize = 0.2f
                 smallCube = Cube(
                     randomCube.x,
                     randomCube.y,
-                    randomCube.z + randomCube.cubeSize() * 2,
+                    randomCube.z + randomCube.cubeSize(), // На поверхности куба
                     floatArrayOf(1f, 1f, 1f, 1f),
                     smallCubeSize
                 )
-                Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
+                parentCube = randomCube // Сохраняем куб, на котором находится маленький кубик
+                Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
             }
         }
 
@@ -201,6 +203,16 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         synchronized(cubes) {
             cubes.forEach { it.updateFall(deltaTime) }
 
+            // Обновляем позицию маленького кубика, если его родительский куб падает
+            smallCube?.let { small ->
+                parentCube?.let { parent ->
+                    if (parent.isFalling) {
+                        small.z = parent.z + parent.cubeSize()
+                        Log.d(TAG, "onDrawFrame: Moved small cube to z=${small.z} due to parent cube falling to z=${parent.z}")
+                    }
+                }
+            }
+
             for (i in 0 until 10) {
                 for (j in 0 until 10) {
                     val height = heightMap[i][j]
@@ -232,7 +244,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             smallCube?.draw(vpMatrix)
         }
 
-        Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
+        //Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
     }
 
     fun handleTouch(x: Float, y: Float, screenWidth: Int, screenHeight: Int): Int {
@@ -268,16 +280,26 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 ballCube = selectedCubeLocal
                 Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z})")
 
+                // Перемещаем маленький кубик на выбранный куб
                 smallCube?.let {
                     it.x = selectedCubeLocal.x
                     it.y = selectedCubeLocal.y
-                    it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize() * 2
-                    Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z})")
+                    it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize()
+                    parentCube = selectedCubeLocal // Обновляем родительский куб
+                    Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
                 }
 
+                // Удаляем куб
                 cubes.removeAt(closestIndex)
                 Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
 
+                // Если удалён родительский куб, сбрасываем parentCube
+                if (selectedCubeLocal == parentCube) {
+                    parentCube = null
+                    Log.d(TAG, "handleTouch: Parent cube removed, parentCube set to null")
+                }
+
+                // Находим кубы выше удалённого
                 val removedX = selectedCubeLocal.x
                 val removedY = selectedCubeLocal.y
                 val removedZ = selectedCubeLocal.z
@@ -293,6 +315,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
                 }
 
+                // Сбрасываем ballCube и selectedCube
                 ballCube = null
                 selectedCube = null
             } else {
