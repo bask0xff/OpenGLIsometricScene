@@ -13,10 +13,12 @@ import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.random.Random
+import kotlin.math.abs
 
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val TAG = "IsoGLRenderer"
     private val cubes = mutableListOf<Cube>()
+    private var smallCube: Cube? = null // Маленький кубик
     val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
@@ -50,6 +52,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     private val cube = Cube(0f, 0f, 0f, floatArrayOf(1f, 0f, 0f, 1f))
     private var ballCube: Cube? = null
+    private var selectedCube: Cube? = null
+    private var lastFrameTime: Long = 0
 
     private val nearPointNdc = FloatArray(4)
     private val farPointNdc = FloatArray(4)
@@ -100,11 +104,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         testTriangle = TestTriangle()
 
         val cells = 5
-        cubes.clear() // Очищаем для чистоты
+        cubes.clear()
         var cubeCount = 0
         for (x in 0 until cells) {
             for (y in 0 until cells) {
-                var height = Random.nextFloat() * 5f // Увеличиваем высоту для большего числа кубов
+                var height = Random.nextFloat() * 3f
                 for (z in 0..height.toInt()) {
                     val color = colors.random()
                     val offset = 0.60f
@@ -123,7 +127,22 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         }
         Log.d(TAG, "onSurfaceCreated: Total cubes created: ${cubes.size}")
 
+        // Создаём маленький кубик
+        if (cubes.isNotEmpty()) {
+            val randomCube = cubes.random()
+            val smallCubeSize = 0.2f // 1/5 от размера обычного куба (0.3 / 5 = 0.06, но используем 0.2 для видимости)
+            smallCube = Cube(
+                randomCube.x,
+                randomCube.y,
+                randomCube.z + randomCube.cubeSize() * 2, // На верхней грани куба
+                floatArrayOf(1f, 1f, 1f, 1f), // Белый цвет для заметности
+                smallCubeSize
+            )
+            Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
+        }
+
         ball = Ball(1f)
+        lastFrameTime = System.nanoTime()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -174,6 +193,12 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
 
+        val currentTime = System.nanoTime()
+        val deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f
+        lastFrameTime = currentTime
+
+        cubes.forEach { it.updateFall(deltaTime) }
+
         for (i in 0 until 10) {
             for (j in 0 until 10) {
                 val height = heightMap[i][j]
@@ -201,7 +226,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         for (cube in cubes) {
             cube.draw(vpMatrix)
         }
-        //Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes")
+
+        // Отрисовываем маленький кубик
+        smallCube?.draw(vpMatrix)
+
+        Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
     }
 
     fun handleTouch(x: Float, y: Float, screenWidth: Int, screenHeight: Int): Int {
@@ -231,10 +260,49 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         }
 
         if (closestCube != null) {
-            closestCube.randomizeColor()
+            // Снимаем выделение с предыдущего куба
+            selectedCube?.setSelected(false)
+            // Выделяем куб перед удалением
+            closestCube?.setSelected(true)
+            selectedCube = closestCube
+            closestCube?.randomizeColor()
             ballCube = closestCube
-            Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${closestCube.x}, ${closestCube.y}, ${closestCube.z})")
+            Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${closestCube?.x}, ${closestCube?.y}, ${closestCube?.z})")
+
+            // Удаляем куб
+            cubes.removeAt(closestIndex)
+            Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
+
+            // Находим кубы выше удалённого и запускаем анимацию падения
+            val removedX = closestCube?.x
+            val removedY = closestCube?.y
+            val removedZ = closestCube?.z
+            val offset = 0.60f
+            val cubesAbove = cubes.filter {
+                abs(it.x - removedX!!) < 0.01f && abs(it.y - removedY!!) < 0.01f && it.z > removedZ!!
+            }
+            cubesAbove.forEach { cube ->
+                cube.isFalling = true
+                cube.startZ = cube.z
+                cube.targetZ = cube.z - offset
+                cube.fallProgress = 0f
+                Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
+            }
+
+            // Перемещаем маленький кубик на новый куб
+            /*smallCube?.let {
+                it.x = closestCube?.x
+                it.y = closestCube?.y
+                it.z = closestCube?.z + closestCube?.cubeSize() * 2
+                Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z})")
+            }*/
+
+            // Сбрасываем ballCube и selectedCube
+            ballCube = null
+            selectedCube = null
         } else {
+            selectedCube?.setSelected(false)
+            selectedCube = null
             Log.d(TAG, "handleTouch: No cube selected")
         }
 

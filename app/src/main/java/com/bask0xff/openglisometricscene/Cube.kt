@@ -8,9 +8,14 @@ import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import kotlin.random.Random
 
-class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: FloatArray) {
+class Cube(var x: Float, var y: Float, var z: Float, private val baseColor: FloatArray, private val sizeScale: Float = 1.0f) {
 
     private var color: FloatArray = baseColor.copyOf()
+    private var isSelected: Boolean = false
+    var isFalling: Boolean = false
+    var targetZ: Float = z
+    var startZ: Float = z
+    var fallProgress: Float = 0f
     private val vertexBuffer: FloatBuffer
     private val indexBuffer: ShortBuffer
     private val mvpMatrix = FloatArray(16)
@@ -18,14 +23,13 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
 
     private val program: Int
 
-    private val _cubeSize = 0.3f
-    private val cubeHeight = 0.3f
+    private val _cubeSize = 0.3f * sizeScale // Размер куба с учётом масштаба
+    private val cubeHeight = 0.3f * sizeScale
 
     fun cubeSize(): Float {
         return _cubeSize
     }
 
-    // Vertex data: position (x, y, z) + color (r, g, b, a)
     private val cubeVertices = floatArrayOf(
         // Top face vertices (z = cubeHeight)
         -_cubeSize, _cubeSize, cubeHeight,  color[0], color[1], color[2], color[3], // 0
@@ -38,15 +42,15 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
         _cubeSize, -_cubeSize, -cubeHeight, color[0] * 0.5f, color[1] * 0.5f, color[2] * 0.5f, color[3], // 6
         _cubeSize, _cubeSize, -cubeHeight,  color[0] * 0.5f, color[1] * 0.5f, color[2] * 0.5f, color[3], // 7
         // Left face additional vertices (x = -_cubeSize)
-        -_cubeSize, _cubeSize, cubeHeight,  color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 8 (same as 0 but with left face color)
-        -_cubeSize, -_cubeSize, cubeHeight, color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 9 (same as 1)
-        -_cubeSize, -_cubeSize, -cubeHeight, color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 10 (same as 5)
-        -_cubeSize, _cubeSize, -cubeHeight, color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 11 (same as 4)
+        -_cubeSize, _cubeSize, cubeHeight,  color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 8
+        -_cubeSize, -_cubeSize, cubeHeight, color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 9
+        -_cubeSize, -_cubeSize, -cubeHeight, color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 10
+        -_cubeSize, _cubeSize, -cubeHeight, color[0] * 0.34f, color[1] * 0.34f, color[2] * 0.34f, color[3], // 11
         // Right face additional vertices (x = _cubeSize)
-        _cubeSize, _cubeSize, cubeHeight,   color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3], // 12 (same as 3)
-        _cubeSize, -_cubeSize, cubeHeight,  color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3], // 13 (same as 2)
-        _cubeSize, -_cubeSize, -cubeHeight, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3], // 14 (same as 6)
-        _cubeSize, _cubeSize, -cubeHeight,  color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3] // 15 (same as 7)
+        _cubeSize, _cubeSize, cubeHeight,   color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3], // 12
+        _cubeSize, -_cubeSize, cubeHeight,  color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3], // 13
+        _cubeSize, -_cubeSize, -cubeHeight, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3], // 14
+        _cubeSize, _cubeSize, -cubeHeight,  color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3] // 15
     )
 
     private val drawOrder = shortArrayOf(
@@ -56,7 +60,7 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
         4, 5, 6, 4, 6, 7,
         // Left face
         8, 9, 10, 8, 10, 11,
-        // Right face (ensure counter-clockwise)
+        // Right face
         12, 14, 13, 12, 15, 14,
         // Front face
         1, 5, 6, 1, 6, 2,
@@ -65,14 +69,12 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
     )
 
     init {
-        // Initialize vertex buffer
         val bb = ByteBuffer.allocateDirect(cubeVertices.size * 4)
         bb.order(ByteOrder.nativeOrder())
         vertexBuffer = bb.asFloatBuffer()
         vertexBuffer.put(cubeVertices)
         vertexBuffer.position(0)
 
-        // Initialize index buffer
         val ib = ByteBuffer.allocateDirect(drawOrder.size * 2)
         ib.order(ByteOrder.nativeOrder())
         indexBuffer = ib.asShortBuffer()
@@ -93,8 +95,14 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
         val fragmentShader = loadShader(GL_FRAGMENT_SHADER, """
             precision mediump float;
             varying vec4 fColor;
+            uniform int uIsSelected;
             void main() {
-                gl_FragColor = fColor;
+                vec4 glowColor = vec4(1.0, 1.0, 0.0, 1.0); // Жёлтый ореол
+                vec4 baseColor = fColor;
+                if (uIsSelected == 1) {
+                    baseColor.rgb = baseColor.rgb * 1.5 + glowColor.rgb * 0.3;
+                }
+                gl_FragColor = baseColor;
             }
         """)
 
@@ -116,22 +124,21 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
         val positionHandle = glGetAttribLocation(program, "vPosition")
         val colorHandle = glGetAttribLocation(program, "vColor")
         val mvpMatrixHandle = glGetUniformLocation(program, "uMVPMatrix")
+        val isSelectedHandle = glGetUniformLocation(program, "uIsSelected")
 
-        // Enable depth testing and disable back-face culling for debugging
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_CULL_FACE)
 
-        // Set vertex position attribute
         glEnableVertexAttribArray(positionHandle)
         glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 7 * 4, vertexBuffer)
 
-        // Set vertex color attribute
         glEnableVertexAttribArray(colorHandle)
         vertexBuffer.position(3)
         glVertexAttribPointer(colorHandle, 4, GL_FLOAT, false, 7 * 4, vertexBuffer)
         vertexBuffer.position(0)
 
         glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0)
+        glUniform1i(isSelectedHandle, if (isSelected) 1 else 0)
 
         glDrawElements(GL_TRIANGLES, drawOrder.size, GL_UNSIGNED_SHORT, indexBuffer)
 
@@ -147,6 +154,10 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
     fun resetColor() {
         color = baseColor.copyOf()
         updateVertexColors()
+    }
+
+    fun setSelected(selected: Boolean) {
+        isSelected = selected
     }
 
     private fun updateVertexColors() {
@@ -223,5 +234,19 @@ class Cube(val x: Float, val y: Float, val z: Float, private val baseColor: Floa
         val tExit = minOf(tMax[0], tMax[1], tMax[2])
 
         return if (tEnter <= tExit && tExit >= 0f) tEnter else null
+    }
+
+    fun updateFall(deltaTime: Float) {
+        if (isFalling) {
+            val fallDuration = 0.5f
+            fallProgress += deltaTime / fallDuration
+            if (fallProgress >= 1.0f) {
+                fallProgress = 1.0f
+                isFalling = false
+                z = targetZ
+            } else {
+                z = startZ + (targetZ - startZ) * fallProgress
+            }
+        }
     }
 }
