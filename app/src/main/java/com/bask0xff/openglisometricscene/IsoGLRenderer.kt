@@ -29,7 +29,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         -1.0f, -1.0f, 0.0f, // Вершина 2
         1.0f, -1.0f, 0.0f  // Вершина 3
     )
-    // Обработчики шейдеров (вам нужно будет их добавить)
     private var positionHandle = 0
     private var uMVPMatrixHandle = 0
 
@@ -37,7 +36,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     private var sphereCoords = FloatArray(1000) // Массив для шара
 
-    // Матрица для проекции и видовых преобразований
     private val mMVPMatrix = FloatArray(16)
     private val mProjectionMatrix = FloatArray(16)
     private val mViewMatrix = FloatArray(16)
@@ -50,7 +48,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private val modelMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
 
-    private val cube = Cube(0f,0f,0f, floatArrayOf(1f, 0f, 0f, 1f))
+    private val cube = Cube(0f, 0f, 0f, floatArrayOf(1f, 0f, 0f, 1f))
     private var ballCube: Cube? = null
 
     private val nearPointNdc = FloatArray(4)
@@ -60,23 +58,19 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     var fieldSizeY = 5
     var cubeSize = 0.5f
 
-
     private val heightMap = Array(10) { IntArray(10) }
 
     init {
-        // Генерация случайных значений для каждой точки (высота башни)
         for (i in 0 until 10) {
             for (j in 0 until 10) {
-                heightMap[i][j] = (1..5).random()  // Высоты от 1 до 5
+                heightMap[i][j] = (1..5).random()
             }
         }
-        // Генерация буфера для треугольника
         triangleBuffer = ByteBuffer.allocateDirect(triangleCoords.size * 4)
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
         triangleBuffer.put(triangleCoords).position(0)
 
-        // Генерация данных для шара
         generateSphereCoordinates(1.0f)
         sphereBuffer = ByteBuffer.allocateDirect(sphereCoords.size * 4)
             .order(ByteOrder.nativeOrder())
@@ -88,7 +82,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         glClearColor(0.2f, 0.2f, 0.2f, 1f)
         glEnable(GL_DEPTH_TEST)
 
-        // Устанавливаем начальные значения для матриц
         Matrix.setIdentityM(mMVPMatrix, 0)
         Matrix.setIdentityM(mProjectionMatrix, 0)
         Matrix.setIdentityM(mViewMatrix, 0)
@@ -107,35 +100,31 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         testTriangle = TestTriangle()
 
         val cells = 5
-        for (x in 0..cells-1) {
-            for (y in 0..cells-1) {
-                var height = Random.nextFloat() * 1f  // Генерация случайной высоты от 0 до 5
+        cubes.clear() // Очищаем для чистоты
+        var cubeCount = 0
+        for (x in 0 until cells) {
+            for (y in 0 until cells) {
+                var height = Random.nextFloat() * 3f // Увеличиваем высоту для большего числа кубов
                 for (z in 0..height.toInt()) {
                     val color = colors.random()
-
-                    height = z.toFloat()
-                    // TODO: change it, based on cubeSize()
-                    var offset = 0.63f
-                    offset = 1f // for 0.5 size
-                    offset = 0.20f
-                    offset = 0.60f
-                    //if(x == 0 || x == 4 || y == 0 || y == 4)
-                    //if (Random.nextFloat() > 0.3f)
-                        cubes.add(
-                            Cube(
-                                x.toFloat() * offset,
-                                y.toFloat() * offset,
-                                height,
-                                color
-                            )
-                        )  // Добавляем куб с высотой
+                    val offset = 0.60f
+                    cubes.add(
+                        Cube(
+                            x.toFloat() * offset,
+                            y.toFloat() * offset,
+                            z.toFloat() * offset,
+                            color
+                        )
+                    )
+                    Log.d(TAG, "onSurfaceCreated: Added cube $cubeCount at (${x * offset}, ${y * offset}, ${z * offset})")
+                    cubeCount++
                 }
             }
         }
+        Log.d(TAG, "onSurfaceCreated: Total cubes created: ${cubes.size}")
 
         ball = Ball(1f)
     }
-
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         glViewport(0, 0, width, height)
@@ -145,59 +134,39 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val ratio = width.toFloat() / height
         Matrix.orthoM(projectionMatrix, 0, -ratio * 5, ratio * 5, -5f, 5f, -10f, 10f)
 
-        Matrix.setLookAtM(viewMatrix, 0,
+        Matrix.setLookAtM(
+            viewMatrix, 0,
             5f, 5f, 5f,
             0f, 0f, 0f,
             0f, 0f, 1f
         )
 
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-
-        /*
-        // Настройка проекционной матрицы
-        Matrix.frustumM(mProjectionMatrix, 0, -ratio, ratio, -1f, 1f, 3f, 7f)
-        Matrix.setLookAtM(mViewMatrix, 0, 0f, 0f, -5f, 0f, 0f, 0f, 0f, 1f, 0f)
-        Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0)
-        */
+        Log.d(TAG, "onSurfaceChanged: Viewport set to $width x $height")
     }
 
-    // Рисование треугольника
     private fun drawTriangle() {
-        // Код для рисования треугольника с использованием OpenGL
         glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 0, triangleBuffer)
         glEnableVertexAttribArray(positionHandle)
         glDrawArrays(GL_TRIANGLES, 0, 3)
     }
 
-    // Рисование шара
-    private fun drawSphere() {
-        // Код для рисования шара с использованием OpenGL
-        glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 0, sphereBuffer)
-        glEnableVertexAttribArray(positionHandle)
-        glDrawArrays(GL_TRIANGLES, 0, sphereCoords.size / 3)
-    }
-
-    // Функция для генерации координат для сферы
     private fun generateSphereCoordinates(radius: Float) {
-        val sphereList = mutableListOf<Float>() // Используем ArrayList для динамического добавления данных
-        val slices = 20 // Количество срезов
-        val stacks = 20 // Количество высот
+        val sphereList = mutableListOf<Float>()
+        val slices = 20
+        val stacks = 20
         for (i in 0 until stacks) {
-            val phi = Math.PI * (i / (stacks - 1).toDouble()) // Угол по высоте
+            val phi = Math.PI * (i / (stacks - 1).toDouble())
             for (j in 0 until slices) {
-                val theta = 2.0 * Math.PI * (j / slices.toDouble()) // Угол по окружности
+                val theta = 2.0 * Math.PI * (j / slices.toDouble())
                 val x = (radius * Math.sin(phi) * Math.cos(theta)).toFloat()
                 val y = (radius * Math.sin(phi) * Math.sin(theta)).toFloat()
                 val z = (radius * Math.cos(phi)).toFloat()
-
-                // Добавляем координаты в список
                 sphereList.add(x)
                 sphereList.add(y)
                 sphereList.add(z)
             }
         }
-
-        // Преобразуем список в массив
         sphereCoords = sphereList.toFloatArray()
     }
 
@@ -205,7 +174,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
 
-        // Отрисовываем башни
         for (i in 0 until 10) {
             for (j in 0 until 10) {
                 val height = heightMap[i][j]
@@ -213,88 +181,67 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     val modelMatrix = FloatArray(16)
                     Matrix.setIdentityM(modelMatrix, 0)
                     Matrix.translateM(modelMatrix, 0, i.toFloat(), k.toFloat(), j.toFloat())
-
                     val mvpMatrix = FloatArray(16)
                     Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
-
-                    cube.draw(mvpMatrix) // Передаём финальную матрицу в отрисовку куба
+                    cube.draw(mvpMatrix)
                 }
             }
         }
 
-
-        // Логируем позицию мяча
         ballCube?.let {
             val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
-            //Log.d(TAG, "Ball position: ${basePosition.x}, ${basePosition.y}, ${basePosition.z}") // Позиция мяча в логе
-
             val modelMatrix = FloatArray(16)
             Matrix.setIdentityM(modelMatrix, 0)
             Matrix.translateM(modelMatrix, 0, basePosition.x, basePosition.y, basePosition.z)
-            Matrix.scaleM(modelMatrix, 0, 3.0f, 3.0f, 3.0f) // увеличиваем в 3 раза
-
+            Matrix.scaleM(modelMatrix, 0, 3.0f, 3.0f, 3.0f)
             val mvpMatrix = FloatArray(16)
             Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
-
-            val positionArray = basePosition.toFloatArray()  // Преобразуем в FloatArray
-            val color = floatArrayOf(1.0f, 0.0f, 0.0f, 1.0f)  // Красный цвет для мяча
-            //ball.draw(vpMatrix, color)  /
-            //ball.draw(mvpMatrix, color)
-            //testTriangle.draw(vpMatrix)
-
-
-            Matrix.setIdentityM(modelMatrix, 0)
-            Matrix.translateM(modelMatrix, 0, 2f, 2f, 0f) // Помещаем рядом с кубами
-            Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
-
-            //testTriangle.draw(mvpMatrix)
-
         }
 
         for (cube in cubes) {
             cube.draw(vpMatrix)
         }
-
-        // Рисуем треугольник
-        //drawTriangle()
-
-        // Рисуем шар
-        //()
-
+        //Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes")
     }
 
-    // Function to handle touch and find closest cube
-    fun handleTouch(
-        x: Float,
-        y: Float,
-        screenWidth: Int,
-        screenHeight: Int
-    ): Boolean {
+    fun handleTouch(x: Float, y: Float, screenWidth: Int, screenHeight: Int): Int {
+        Log.d(TAG, "handleTouch: Touch at ($x, $y), screen size: $screenWidth x $screenHeight")
         val (rayOrigin, rayDir) = getRayOriginAndDirection(x, y, screenWidth, screenHeight, viewMatrix, projectionMatrix)
+        Log.d(TAG, "handleTouch: Ray origin: (${rayOrigin.x}, ${rayOrigin.y}, ${rayOrigin.z})")
+        Log.d(TAG, "handleTouch: Ray direction: (${rayDir.x}, ${rayDir.y}, ${rayDir.z})")
 
         var closestCube: Cube? = null
+        var closestIndex = -1
         var minDistance = Float.MAX_VALUE
 
-        for (cube in cubes) {
+        if (cubes.isEmpty()) {
+            Log.d(TAG, "handleTouch: No cubes available")
+            return closestIndex
+        }
+
+        cubes.forEachIndexed { index, cube ->
             val distance = cube.intersectRayWithCube(rayOrigin, rayDir)
+            Log.d(TAG, "handleTouch: Cube $index at (${cube.x}, ${cube.y}, ${cube.z}), distance: ${distance ?: "null"}")
             if (distance != null && distance < minDistance) {
                 minDistance = distance
                 closestCube = cube
+                closestIndex = index
+                Log.d(TAG, "handleTouch: New closest cube index: $index at distance $distance")
             }
         }
 
-        Log.d(TAG, "handleTouch: clsect cube: ${closestCube?.x}, ${closestCube?.y}")
-
-        closestCube?.let {
-            it.randomizeColor()
-            ballCube = it
+        if (closestCube != null) {
+            closestCube.randomizeColor()
+            ballCube = closestCube
+            Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${closestCube.x}, ${closestCube.y}, ${closestCube.z})")
+        } else {
+            Log.d(TAG, "handleTouch: No cube selected")
         }
 
-        return closestCube != null
+        Log.d(TAG, "handleTouch: Returning index: $closestIndex")
+        return closestIndex
     }
 
-
-    // Convert touch to world ray
     private fun getRayOriginAndDirection(
         x: Float,
         y: Float,
@@ -305,6 +252,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     ): Pair<Vector3, Vector3> {
         val normalizedX = (2.0f * x) / screenWidth - 1.0f
         val normalizedY = 1.0f - (2.0f * y) / screenHeight
+        Log.d(TAG, "getRayOriginAndDirection: Normalized coords: ($normalizedX, $normalizedY)")
 
         val nearPointNDC = floatArrayOf(normalizedX, normalizedY, -1.0f, 1.0f)
         val farPointNDC = floatArrayOf(normalizedX, normalizedY, 1.0f, 1.0f)
