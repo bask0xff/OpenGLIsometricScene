@@ -130,7 +130,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
             if (cubes.isNotEmpty()) {
                 val randomCube = cubes.random()
-                val smallCubeSize = 0.2f
+                val smallCubeSize = 0.0f
                 smallCube = Cube(
                     randomCube.x,
                     randomCube.y,
