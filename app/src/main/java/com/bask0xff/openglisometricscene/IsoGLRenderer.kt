@@ -18,7 +18,7 @@ import kotlin.math.abs
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val TAG = "IsoGLRenderer"
     private val cubes = mutableListOf<Cube>()
-    private var smallCube: Cube? = null // Маленький кубик
+    private var smallCube: Cube? = null
     val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
@@ -127,15 +127,14 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         }
         Log.d(TAG, "onSurfaceCreated: Total cubes created: ${cubes.size}")
 
-        // Создаём маленький кубик
         if (cubes.isNotEmpty()) {
             val randomCube = cubes.random()
-            val smallCubeSize = 0.2f // 1/5 от размера обычного куба (0.3 / 5 = 0.06, но используем 0.2 для видимости)
+            val smallCubeSize = 0.2f
             smallCube = Cube(
                 randomCube.x,
                 randomCube.y,
-                randomCube.z + randomCube.cubeSize() * 2, // На верхней грани куба
-                floatArrayOf(1f, 1f, 1f, 1f), // Белый цвет для заметности
+                randomCube.z + randomCube.cubeSize() * 2,
+                floatArrayOf(1f, 1f, 1f, 1f),
                 smallCubeSize
             )
             Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
@@ -227,7 +226,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             cube.draw(vpMatrix)
         }
 
-        // Отрисовываем маленький кубик
         smallCube?.draw(vpMatrix)
 
         Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
@@ -239,7 +237,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         Log.d(TAG, "handleTouch: Ray origin: (${rayOrigin.x}, ${rayOrigin.y}, ${rayOrigin.z})")
         Log.d(TAG, "handleTouch: Ray direction: (${rayDir.x}, ${rayDir.y}, ${rayDir.z})")
 
-        var closestCube: Cube? = null
         var closestIndex = -1
         var minDistance = Float.MAX_VALUE
 
@@ -253,33 +250,38 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             Log.d(TAG, "handleTouch: Cube $index at (${cube.x}, ${cube.y}, ${cube.z}), distance: ${distance ?: "null"}")
             if (distance != null && distance < minDistance) {
                 minDistance = distance
-                closestCube = cube
                 closestIndex = index
                 Log.d(TAG, "handleTouch: New closest cube index: $index at distance $distance")
             }
         }
 
-        if (closestCube != null) {
-            // Снимаем выделение с предыдущего куба
+        if (closestIndex >= 0) {
+            val selectedCubeLocal = cubes[closestIndex]
             selectedCube?.setSelected(false)
-            // Выделяем куб перед удалением
-            closestCube?.setSelected(true)
-            selectedCube = closestCube
-            closestCube?.randomizeColor()
-            ballCube = closestCube
-            Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${closestCube?.x}, ${closestCube?.y}, ${closestCube?.z})")
+            selectedCubeLocal.setSelected(true)
+            selectedCubeLocal.randomizeColor()
+            ballCube = selectedCubeLocal
+            Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z})")
+
+            // Перемещаем маленький кубик
+            smallCube?.let {
+                it.x = selectedCubeLocal.x
+                it.y = selectedCubeLocal.y
+                it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize() * 2
+                Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z})")
+            }
 
             // Удаляем куб
             cubes.removeAt(closestIndex)
             Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
 
-            // Находим кубы выше удалённого и запускаем анимацию падения
-            val removedX = closestCube?.x
-            val removedY = closestCube?.y
-            val removedZ = closestCube?.z
+            // Находим кубы выше удалённого
+            val removedX = selectedCubeLocal.x
+            val removedY = selectedCubeLocal.y
+            val removedZ = selectedCubeLocal.z
             val offset = 0.60f
             val cubesAbove = cubes.filter {
-                abs(it.x - removedX!!) < 0.01f && abs(it.y - removedY!!) < 0.01f && it.z > removedZ!!
+                abs(it.x - removedX) < 0.01f && abs(it.y - removedY) < 0.01f && it.z > removedZ
             }
             cubesAbove.forEach { cube ->
                 cube.isFalling = true
@@ -288,14 +290,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 cube.fallProgress = 0f
                 Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
             }
-
-            // Перемещаем маленький кубик на новый куб
-            /*smallCube?.let {
-                it.x = closestCube?.x
-                it.y = closestCube?.y
-                it.z = closestCube?.z + closestCube?.cubeSize() * 2
-                Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z})")
-            }*/
 
             // Сбрасываем ballCube и selectedCube
             ballCube = null
