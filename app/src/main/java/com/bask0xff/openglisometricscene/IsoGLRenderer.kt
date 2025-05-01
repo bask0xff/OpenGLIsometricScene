@@ -104,7 +104,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         var cubeCount = 0
         for (x in 0 until cells) {
             for (y in 0 until cells) {
-                var height = Random.nextFloat() * 3f // Увеличиваем высоту для большего числа кубов
+                var height = Random.nextFloat() * 5f // Увеличиваем высоту для большего числа кубов
                 for (z in 0..height.toInt()) {
                     val color = colors.random()
                     val offset = 0.60f
