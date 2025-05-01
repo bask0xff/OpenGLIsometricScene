@@ -236,17 +236,26 @@ class Cube(var x: Float, var y: Float, var z: Float, private val baseColor: Floa
         return if (tEnter <= tExit && tExit >= 0f) tEnter else null
     }
 
+    private var fallSpeed = 0f
+    private val gravity = -9.8f
+
     fun updateFall(deltaTime: Float) {
-        if (isFalling) {
-            val fallDuration = 0.5f
-            fallProgress += deltaTime / fallDuration
-            if (fallProgress >= 1.0f) {
-                fallProgress = 1.0f
-                isFalling = false
-                z = targetZ
-            } else {
-                z = startZ + (targetZ - startZ) * fallProgress
-            }
+        if (!isFalling) return
+
+        fallSpeed += gravity * deltaTime
+        z += fallSpeed * deltaTime
+
+        if (z <= targetZ) {
+            z = targetZ
+            isFalling = false
+            fallSpeed = 0f
+        }
+    }
+
+    fun startFalling() {
+        if (!isFalling) {
+            isFalling = true
+            fallSpeed = 5f
         }
     }
 }
