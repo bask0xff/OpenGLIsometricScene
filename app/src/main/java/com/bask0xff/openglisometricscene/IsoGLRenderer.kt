@@ -192,23 +192,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         sphereCoords = sphereList.toFloatArray()
     }
 
-    var isFallingInProgress = false
-
-    fun startCubeFall() {
-        if (isFallingInProgress) return
-
-        isFallingInProgress = true
-
-        synchronized(cubes) {
-            for (cube in cubes) {
-                if (!cube.isFalling) {
-                    cube.startFalling()
-                }
-            }
-        }
-    }
-
-
     override fun onDrawFrame(gl: GL10?) {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
@@ -219,16 +202,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         synchronized(cubes) {
             cubes.forEach { it.updateFall(deltaTime) }
-
-            // Проверяем, завершили ли все падение
-            if (isFallingInProgress) {
-                val stillFalling = cubes.any { it.isFalling }
-                if (!stillFalling) {
-                    isFallingInProgress = false
-                    Log.d(TAG, "Все кубы завершили падение — ввод разблокирован.")
-                }
-            }
-
 
             // Обновляем позицию маленького кубика, если его родительский куб падает
             smallCube?.let { small ->
