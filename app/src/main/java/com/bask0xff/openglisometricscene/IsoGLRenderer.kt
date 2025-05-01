@@ -27,6 +27,12 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     var surfaceWidth = 1
     var surfaceHeight = 1
 
+    private var gridBuffer: FloatBuffer? = null
+    private var gridVertexCount: Int = 0
+    private var gridProgram: Int = 0
+    private var gridPositionHandle: Int = 0
+    private var gridMVPMatrixHandle: Int = 0
+
     private val triangleCoords = floatArrayOf(
         0.0f, 1.0f, 0.0f, // Вершина 1
         -1.0f, -1.0f, 0.0f, // Вершина 2
@@ -71,6 +77,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 heightMap[i][j] = (1..5).random()
             }
         }
+
+        initializeGrid()
+
         triangleBuffer = ByteBuffer.allocateDirect(triangleCoords.size * 4)
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
@@ -81,6 +90,55 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
         sphereBuffer.put(sphereCoords).position(0)
+    }
+
+    private fun initializeGrid() {
+        // Размер поля для сетки (можно настроить)
+        val gridSizeX = fieldSizeX.toFloat()
+        val gridSizeY = fieldSizeY.toFloat()
+        val cellSize = 0.60f // Расстояние между кубами, совпадает с offset в вашем коде
+
+        // Список координат для линий сетки
+        val gridCoords = mutableListOf<Float>()
+
+        // Горизонтальные линии (по Y)
+        for (i in 0..fieldSizeX) {
+            val x = i * cellSize
+            gridCoords.addAll(listOf(
+                x, 0f, 0f, // Начало линии
+                x, gridSizeY * cellSize, 0f // Конец линии
+            ))
+        }
+
+        // Вертикальные линии (по X)
+        for (j in 0..fieldSizeY) {
+            val y = j * cellSize
+            gridCoords.addAll(listOf(
+                0f, y, 0f, // Начало линии
+                gridSizeX * cellSize, y, 0f // Конец линии
+            ))
+        }
+
+        gridVertexCount = gridCoords.size / 3 // Количество вершин (x, y, z для каждой)
+
+        // Инициализация буфера для сетки
+        gridBuffer = ByteBuffer.allocateDirect(gridCoords.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+        gridBuffer?.put(gridCoords.toFloatArray())?.position(0)
+    }
+
+    private fun loadShader(type: Int, shaderCode: String): Int {
+        return glCreateShader(type).also { shader ->
+            glShaderSource(shader, shaderCode)
+            glCompileShader(shader)
+            val compileStatus = IntArray(1)
+            glGetShaderiv(shader, GL_COMPILE_STATUS, compileStatus, 0)
+            if (compileStatus[0] == 0) {
+                Log.e(TAG, "Error compiling shader: ${glGetShaderInfoLog(shader)}")
+                glDeleteShader(shader)
+            }
+        }
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -103,6 +161,30 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         )
 
         testTriangle = TestTriangle()
+
+        // Создание программы для сетки
+        val vertexShader = loadShader(GL_VERTEX_SHADER, """
+            uniform mat4 uMVPMatrix;
+            attribute vec4 vPosition;
+            void main() {
+                gl_Position = uMVPMatrix * vPosition;
+            }
+        """.trimIndent())
+
+        val fragmentShader = loadShader(GL_FRAGMENT_SHADER, """
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); // Белый цвет
+            }
+        """.trimIndent())
+
+        gridProgram = glCreateProgram().also {
+            glAttachShader(it, vertexShader)
+            glAttachShader(it, fragmentShader)
+            glLinkProgram(it)
+            gridPositionHandle = glGetAttribLocation(it, "vPosition")
+            gridMVPMatrixHandle = glGetUniformLocation(it, "uMVPMatrix")
+        }
 
         synchronized(cubes) {
             val cells = 5
@@ -200,6 +282,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f
         lastFrameTime = currentTime
 
+        // Отрисовка сетки
+        drawGrid()
+
         synchronized(cubes) {
             cubes.forEach { it.updateFall(deltaTime) }
 
@@ -243,8 +328,27 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
             smallCube?.draw(vpMatrix)
         }
-
         //Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
+    }
+
+    private fun drawGrid() {
+        glUseProgram(gridProgram)
+
+        // Передаем матрицу проекции и вида
+        glUniformMatrix4fv(gridMVPMatrixHandle, 1, false, vpMatrix, 0)
+
+        // Передаем координаты вершин
+        gridBuffer?.let {
+            it.position(0)
+            glVertexAttribPointer(gridPositionHandle, 3, GL_FLOAT, false, 0, it)
+            glEnableVertexAttribArray(gridPositionHandle)
+        }
+
+        // Отрисовка линий сетки
+        glDrawArrays(GL_LINES, 0, gridVertexCount)
+
+        // Отключаем атрибуты
+        glDisableVertexAttribArray(gridPositionHandle)
     }
 
     fun handleTouch(x: Float, y: Float, screenWidth: Int, screenHeight: Int): Int {
