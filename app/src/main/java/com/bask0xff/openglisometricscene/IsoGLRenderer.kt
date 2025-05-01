@@ -103,41 +103,43 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         testTriangle = TestTriangle()
 
-        val cells = 5
-        cubes.clear()
-        var cubeCount = 0
-        for (x in 0 until cells) {
-            for (y in 0 until cells) {
-                var height = Random.nextFloat() * 3f
-                for (z in 0..height.toInt()) {
-                    val color = colors.random()
-                    val offset = 0.60f
-                    cubes.add(
-                        Cube(
-                            x.toFloat() * offset,
-                            y.toFloat() * offset,
-                            z.toFloat() * offset,
-                            color
+        synchronized(cubes) {
+            val cells = 5
+            cubes.clear()
+            var cubeCount = 0
+            for (x in 0 until cells) {
+                for (y in 0 until cells) {
+                    var height = Random.nextFloat() * 3f
+                    for (z in 0..height.toInt()) {
+                        val color = colors.random()
+                        val offset = 0.60f
+                        cubes.add(
+                            Cube(
+                                x.toFloat() * offset,
+                                y.toFloat() * offset,
+                                z.toFloat() * offset,
+                                color
+                            )
                         )
-                    )
-                    Log.d(TAG, "onSurfaceCreated: Added cube $cubeCount at (${x * offset}, ${y * offset}, ${z * offset})")
-                    cubeCount++
+                        Log.d(TAG, "onSurfaceCreated: Added cube $cubeCount at (${x * offset}, ${y * offset}, ${z * offset})")
+                        cubeCount++
+                    }
                 }
             }
-        }
-        Log.d(TAG, "onSurfaceCreated: Total cubes created: ${cubes.size}")
+            Log.d(TAG, "onSurfaceCreated: Total cubes created: ${cubes.size}")
 
-        if (cubes.isNotEmpty()) {
-            val randomCube = cubes.random()
-            val smallCubeSize = 0.2f
-            smallCube = Cube(
-                randomCube.x,
-                randomCube.y,
-                randomCube.z + randomCube.cubeSize() * 2,
-                floatArrayOf(1f, 1f, 1f, 1f),
-                smallCubeSize
-            )
-            Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
+            if (cubes.isNotEmpty()) {
+                val randomCube = cubes.random()
+                val smallCubeSize = 0.2f
+                smallCube = Cube(
+                    randomCube.x,
+                    randomCube.y,
+                    randomCube.z + randomCube.cubeSize() * 2,
+                    floatArrayOf(1f, 1f, 1f, 1f),
+                    smallCubeSize
+                )
+                Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
+            }
         }
 
         ball = Ball(1f)
@@ -196,37 +198,39 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f
         lastFrameTime = currentTime
 
-        cubes.forEach { it.updateFall(deltaTime) }
+        synchronized(cubes) {
+            cubes.forEach { it.updateFall(deltaTime) }
 
-        for (i in 0 until 10) {
-            for (j in 0 until 10) {
-                val height = heightMap[i][j]
-                for (k in 0 until height) {
-                    val modelMatrix = FloatArray(16)
-                    Matrix.setIdentityM(modelMatrix, 0)
-                    Matrix.translateM(modelMatrix, 0, i.toFloat(), k.toFloat(), j.toFloat())
-                    val mvpMatrix = FloatArray(16)
-                    Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
-                    cube.draw(mvpMatrix)
+            for (i in 0 until 10) {
+                for (j in 0 until 10) {
+                    val height = heightMap[i][j]
+                    for (k in 0 until height) {
+                        val modelMatrix = FloatArray(16)
+                        Matrix.setIdentityM(modelMatrix, 0)
+                        Matrix.translateM(modelMatrix, 0, i.toFloat(), k.toFloat(), j.toFloat())
+                        val mvpMatrix = FloatArray(16)
+                        Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
+                        cube.draw(mvpMatrix)
+                    }
                 }
             }
-        }
 
-        ballCube?.let {
-            val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
-            val modelMatrix = FloatArray(16)
-            Matrix.setIdentityM(modelMatrix, 0)
-            Matrix.translateM(modelMatrix, 0, basePosition.x, basePosition.y, basePosition.z)
-            Matrix.scaleM(modelMatrix, 0, 3.0f, 3.0f, 3.0f)
-            val mvpMatrix = FloatArray(16)
-            Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
-        }
+            ballCube?.let {
+                val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
+                val modelMatrix = FloatArray(16)
+                Matrix.setIdentityM(modelMatrix, 0)
+                Matrix.translateM(modelMatrix, 0, basePosition.x, basePosition.y, basePosition.z)
+                Matrix.scaleM(modelMatrix, 0, 3.0f, 3.0f, 3.0f)
+                val mvpMatrix = FloatArray(16)
+                Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
+            }
 
-        for (cube in cubes) {
-            cube.draw(vpMatrix)
-        }
+            for (cube in cubes) {
+                cube.draw(vpMatrix)
+            }
 
-        smallCube?.draw(vpMatrix)
+            smallCube?.draw(vpMatrix)
+        }
 
         Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
     }
@@ -240,64 +244,62 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         var closestIndex = -1
         var minDistance = Float.MAX_VALUE
 
-        if (cubes.isEmpty()) {
-            Log.d(TAG, "handleTouch: No cubes available")
-            return closestIndex
-        }
-
-        cubes.forEachIndexed { index, cube ->
-            val distance = cube.intersectRayWithCube(rayOrigin, rayDir)
-            Log.d(TAG, "handleTouch: Cube $index at (${cube.x}, ${cube.y}, ${cube.z}), distance: ${distance ?: "null"}")
-            if (distance != null && distance < minDistance) {
-                minDistance = distance
-                closestIndex = index
-                Log.d(TAG, "handleTouch: New closest cube index: $index at distance $distance")
-            }
-        }
-
-        if (closestIndex >= 0) {
-            val selectedCubeLocal = cubes[closestIndex]
-            selectedCube?.setSelected(false)
-            selectedCubeLocal.setSelected(true)
-            selectedCubeLocal.randomizeColor()
-            ballCube = selectedCubeLocal
-            Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z})")
-
-            // Перемещаем маленький кубик
-            smallCube?.let {
-                it.x = selectedCubeLocal.x
-                it.y = selectedCubeLocal.y
-                it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize() * 2
-                Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z})")
+        synchronized(cubes) {
+            if (cubes.isEmpty()) {
+                Log.d(TAG, "handleTouch: No cubes available")
+                return closestIndex
             }
 
-            // Удаляем куб
-            cubes.removeAt(closestIndex)
-            Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
-
-            // Находим кубы выше удалённого
-            val removedX = selectedCubeLocal.x
-            val removedY = selectedCubeLocal.y
-            val removedZ = selectedCubeLocal.z
-            val offset = 0.60f
-            val cubesAbove = cubes.filter {
-                abs(it.x - removedX) < 0.01f && abs(it.y - removedY) < 0.01f && it.z > removedZ
-            }
-            cubesAbove.forEach { cube ->
-                cube.isFalling = true
-                cube.startZ = cube.z
-                cube.targetZ = cube.z - offset
-                cube.fallProgress = 0f
-                Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
+            cubes.forEachIndexed { index, cube ->
+                val distance = cube.intersectRayWithCube(rayOrigin, rayDir)
+                Log.d(TAG, "handleTouch: Cube $index at (${cube.x}, ${cube.y}, ${cube.z}), distance: ${distance ?: "null"}")
+                if (distance != null && distance < minDistance) {
+                    minDistance = distance
+                    closestIndex = index
+                    Log.d(TAG, "handleTouch: New closest cube index: $index at distance $distance")
+                }
             }
 
-            // Сбрасываем ballCube и selectedCube
-            ballCube = null
-            selectedCube = null
-        } else {
-            selectedCube?.setSelected(false)
-            selectedCube = null
-            Log.d(TAG, "handleTouch: No cube selected")
+            if (closestIndex >= 0) {
+                val selectedCubeLocal = cubes[closestIndex]
+                selectedCube?.setSelected(false)
+                selectedCubeLocal.setSelected(true)
+                selectedCubeLocal.randomizeColor()
+                ballCube = selectedCubeLocal
+                Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z})")
+
+                smallCube?.let {
+                    it.x = selectedCubeLocal.x
+                    it.y = selectedCubeLocal.y
+                    it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize() * 2
+                    Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z})")
+                }
+
+                cubes.removeAt(closestIndex)
+                Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
+
+                val removedX = selectedCubeLocal.x
+                val removedY = selectedCubeLocal.y
+                val removedZ = selectedCubeLocal.z
+                val offset = 0.60f
+                val cubesAbove = cubes.filter {
+                    abs(it.x - removedX) < 0.01f && abs(it.y - removedY) < 0.01f && it.z > removedZ
+                }
+                cubesAbove.forEach { cube ->
+                    cube.isFalling = true
+                    cube.startZ = cube.z
+                    cube.targetZ = cube.z - offset
+                    cube.fallProgress = 0f
+                    Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
+                }
+
+                ballCube = null
+                selectedCube = null
+            } else {
+                selectedCube?.setSelected(false)
+                selectedCube = null
+                Log.d(TAG, "handleTouch: No cube selected")
+            }
         }
 
         Log.d(TAG, "handleTouch: Returning index: $closestIndex")
