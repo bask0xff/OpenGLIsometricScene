@@ -331,30 +331,4 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
         return rayOrigin to rayDirection
     }
-
-
-    fun getCubes(): List<Cube> = cubes
-
-    private fun intersectsCube(rayOrigin: FloatArray, rayDir: FloatArray, cube: Cube): Boolean {
-        val min = floatArrayOf(cube.x - 0.5f, cube.y - 0.5f, cube.z - 0.5f)
-        val max = floatArrayOf(cube.x + 0.5f, cube.y + 0.5f, cube.z + 0.5f)
-
-        var tmin = (min[0] - rayOrigin[0]) / rayDir[0]
-        var tmax = (max[0] - rayOrigin[0]) / rayDir[0]
-
-        if (tmin > tmax) tmin = tmax.also { tmax = tmin }
-
-        for (i in 1..2) {
-            var t1 = (min[i] - rayOrigin[i]) / rayDir[i]
-            var t2 = (max[i] - rayOrigin[i]) / rayDir[i]
-
-            if (t1 > t2) t1 = t2.also { t2 = t1 }
-
-            if (t1 > tmin) tmin = t1
-            if (t2 < tmax) tmax = t2
-            if (tmin > tmax) return false
-        }
-
-        return tmax > 0
-    }
 }
