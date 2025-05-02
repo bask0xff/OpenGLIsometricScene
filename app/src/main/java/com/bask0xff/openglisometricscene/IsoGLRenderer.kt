@@ -145,6 +145,13 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         glClearColor(0.2f, 0.2f, 0.2f, 1f)
         glEnable(GL_DEPTH_TEST)
 
+        makeCubes()
+
+        ball = Ball(1f)
+        lastFrameTime = System.nanoTime()
+    }
+
+    private fun makeCubes() {
         Matrix.setIdentityM(mMVPMatrix, 0)
         Matrix.setIdentityM(mProjectionMatrix, 0)
         Matrix.setIdentityM(mViewMatrix, 0)
@@ -225,9 +232,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
             }
         }
-
-        ball = Ball(1f)
-        lastFrameTime = System.nanoTime()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -281,6 +285,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val currentTime = System.nanoTime()
         val deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f
         lastFrameTime = currentTime
+
+        if(cubes.size == 0){
+            Log.d(TAG, "onDrawFrame: NO CUBES !!!")
+            makeCubes()
+        }
 
         // Отрисовка сетки
         drawGrid()
