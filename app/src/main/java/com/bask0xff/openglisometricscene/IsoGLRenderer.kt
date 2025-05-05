@@ -346,21 +346,15 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
     private fun drawGrid() {
         glUseProgram(gridProgram)
-
-        // Передаем матрицу проекции и вида
         glUniformMatrix4fv(gridMVPMatrixHandle, 1, false, vpMatrix, 0)
-
-        // Передаем координаты вершин
         gridBuffer?.let {
             it.position(0)
             glVertexAttribPointer(gridPositionHandle, 3, GL_FLOAT, false, 0, it)
             glEnableVertexAttribArray(gridPositionHandle)
         }
-
-        // Отрисовка линий сетки
+        glDepthMask(false) // Отключаем запись в буфер глубины
         glDrawArrays(GL_LINES, 0, gridVertexCount)
-
-        // Отключаем атрибуты
+        glDepthMask(true) // Включаем обратно
         glDisableVertexAttribArray(gridPositionHandle)
     }
 
