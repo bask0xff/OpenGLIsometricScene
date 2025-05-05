@@ -1,10 +1,13 @@
 package com.bask0xff.openglisometricscene
 
+import android.annotation.SuppressLint
 import android.opengl.GLES20
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
 import com.bask0xff.openglisometricscene.ui.theme.Ball
 import java.nio.ByteBuffer
@@ -15,6 +18,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.random.Random
 import kotlin.math.abs
 
+@SuppressLint("NewApi")
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val TAG = "IsoGLRenderer"
     private val cubes = mutableListOf<Cube>()
