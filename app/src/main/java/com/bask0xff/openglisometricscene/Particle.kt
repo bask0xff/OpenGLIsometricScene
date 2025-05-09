@@ -57,7 +57,7 @@ class Particle(
             varying vec4 fragColor;
             void main() {
                 gl_Position = uMVPMatrix * vPosition;
-                gl_PointSize = 10.0;
+                gl_PointSize = 16.0;
                 fragColor = vColor;
             }
         """.trimIndent()
