@@ -5,25 +5,22 @@ import android.opengl.GLES20
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.compose.ui.graphics.Color
-import com.bask0xff.openglisometricscene.ui.theme.Ball
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlin.random.Random
 import kotlin.math.abs
+import kotlin.random.Random
 
 @SuppressLint("NewApi")
 class IsoGLRenderer : GLSurfaceView.Renderer {
     private val TAG = "IsoGLRenderer"
     private val cubes = mutableListOf<Cube>()
+    private val particles = mutableListOf<Particle>()
     private var smallCube: Cube? = null
-    private var parentCube: Cube? = null // Куб, на котором находится маленький кубик
+    private var parentCube: Cube? = null
     val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
@@ -37,38 +34,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private var gridPositionHandle: Int = 0
     private var gridMVPMatrixHandle: Int = 0
 
-    private val triangleCoords = floatArrayOf(
-        0.0f, 1.0f, 0.0f, // Вершина 1
-        -1.0f, -1.0f, 0.0f, // Вершина 2
-        1.0f, -1.0f, 0.0f  // Вершина 3
-    )
-    private var positionHandle = 0
-    private var uMVPMatrixHandle = 0
-
-    private var rotationAngle: Float = 0f
-
-    private var sphereCoords = FloatArray(1000) // Массив для шара
-
-    private val mMVPMatrix = FloatArray(16)
-    private val mProjectionMatrix = FloatArray(16)
-    private val mViewMatrix = FloatArray(16)
-
-    private val triangleBuffer: FloatBuffer
-    private val sphereBuffer: FloatBuffer
-
-    private var ball = Ball(10f)
-    private lateinit var testTriangle: TestTriangle
-    private val modelMatrix = FloatArray(16)
-    private val mvpMatrix = FloatArray(16)
-
-    private val cube = Cube(0f, 0f, 0f, floatArrayOf(1f, 0f, 0f, 1f))
-    private var ballCube: Cube? = null
     private var selectedCube: Cube? = null
     private var lastFrameTime: Long = 0
-
-    private val nearPointNdc = FloatArray(4)
-    private val farPointNdc = FloatArray(4)
-
     var fieldSizeX = 5
     var fieldSizeY = 5
     var cubeSize = 0.5f
@@ -81,51 +48,33 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 heightMap[i][j] = (1..5).random()
             }
         }
-
         initializeGrid()
-
-        triangleBuffer = ByteBuffer.allocateDirect(triangleCoords.size * 4)
-            .order(ByteOrder.nativeOrder())
-            .asFloatBuffer()
-        triangleBuffer.put(triangleCoords).position(0)
-
-        generateSphereCoordinates(1.0f)
-        sphereBuffer = ByteBuffer.allocateDirect(sphereCoords.size * 4)
-            .order(ByteOrder.nativeOrder())
-            .asFloatBuffer()
-        sphereBuffer.put(sphereCoords).position(0)
     }
 
     private fun initializeGrid() {
-        // Размер поля для сетки (можно настроить)
         val gridSizeX = fieldSizeX.toFloat()
         val gridSizeY = fieldSizeY.toFloat()
-        val cellSize = 0.60f // Расстояние между кубами, совпадает с offset в вашем коде
-
-        // Список координат для линий сетки
+        val cellSize = 0.60f
         val gridCoords = mutableListOf<Float>()
 
-        // Горизонтальные линии (по Y)
         for (i in 0..fieldSizeX) {
             val x = i * cellSize
             gridCoords.addAll(listOf(
-                x, 0f, 0f, // Начало линии
-                x, gridSizeY * cellSize, 0f // Конец линии
+                x, 0f, 0f,
+                x, gridSizeY * cellSize, 0f
             ))
         }
 
-        // Вертикальные линии (по X)
         for (j in 0..fieldSizeY) {
             val y = j * cellSize
             gridCoords.addAll(listOf(
-                0f, y, 0f, // Начало линии
-                gridSizeX * cellSize, y, 0f // Конец линии
+                0f, y, 0f,
+                gridSizeX * cellSize, y, 0f
             ))
         }
 
-        gridVertexCount = gridCoords.size / 3 // Количество вершин (x, y, z для каждой)
+        gridVertexCount = gridCoords.size / 3
 
-        // Инициализация буфера для сетки
         gridBuffer = ByteBuffer.allocateDirect(gridCoords.size * 4)
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
@@ -148,18 +97,19 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         glClearColor(0.2f, 0.2f, 0.2f, 1f)
         glEnable(GL_DEPTH_TEST)
-
+        glDepthFunc(GL_LESS)
+        glDisable(GL_BLEND)
         makeCubes()
-
-        ball = Ball(1f)
         lastFrameTime = System.nanoTime()
+
+        // Инициализация кубов
+        synchronized(cubes) {
+            //cubes.forEach { it.initialize() }
+            //smallCube?.initialize()
+        }
     }
 
     private fun makeCubes() {
-        Matrix.setIdentityM(mMVPMatrix, 0)
-        Matrix.setIdentityM(mProjectionMatrix, 0)
-        Matrix.setIdentityM(mViewMatrix, 0)
-
         val colors = listOf(
             floatArrayOf(1f, 0f, 0f, 1f), // Red
             floatArrayOf(0f, 1f, 0f, 1f), // Green
@@ -171,9 +121,6 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             floatArrayOf(0.6f, 0f, 1f, 1f)  // Violet
         )
 
-        testTriangle = TestTriangle()
-
-        // Создание программы для сетки
         val vertexShader = loadShader(GL_VERTEX_SHADER, """
             uniform mat4 uMVPMatrix;
             attribute vec4 vPosition;
@@ -185,7 +132,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val fragmentShader = loadShader(GL_FRAGMENT_SHADER, """
             precision mediump float;
             void main() {
-                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); // Белый цвет
+                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
             }
         """.trimIndent())
 
@@ -228,11 +175,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 smallCube = Cube(
                     randomCube.x,
                     randomCube.y,
-                    randomCube.z + randomCube.cubeSize(), // На поверхности куба
+                    randomCube.z + randomCube.cubeSize(),
                     floatArrayOf(1f, 1f, 1f, 1f),
                     smallCubeSize
                 )
-                parentCube = randomCube // Сохраняем куб, на котором находится маленький кубик
+                parentCube = randomCube
                 Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
             }
         }
@@ -242,106 +189,51 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         glViewport(0, 0, width, height)
         surfaceWidth = width
         surfaceHeight = height
-
         val ratio = width.toFloat() / height
         Matrix.orthoM(projectionMatrix, 0, -ratio * 5, ratio * 5, -5f, 5f, -10f, 10f)
-
         Matrix.setLookAtM(
             viewMatrix, 0,
             5f, 5f, 5f,
             0f, 0f, 0f,
             0f, 0f, 1f
         )
-
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
         Log.d(TAG, "onSurfaceChanged: Viewport set to $width x $height")
     }
 
-    private fun drawTriangle() {
-        glVertexAttribPointer(positionHandle, 3, GL_FLOAT, false, 0, triangleBuffer)
-        glEnableVertexAttribArray(positionHandle)
-        glDrawArrays(GL_TRIANGLES, 0, 3)
-    }
-
-    private fun generateSphereCoordinates(radius: Float) {
-        val sphereList = mutableListOf<Float>()
-        val slices = 20
-        val stacks = 20
-        for (i in 0 until stacks) {
-            val phi = Math.PI * (i / (stacks - 1).toDouble())
-            for (j in 0 until slices) {
-                val theta = 2.0 * Math.PI * (j / slices.toDouble())
-                val x = (radius * Math.sin(phi) * Math.cos(theta)).toFloat()
-                val y = (radius * Math.sin(phi) * Math.sin(theta)).toFloat()
-                val z = (radius * Math.cos(phi)).toFloat()
-                sphereList.add(x)
-                sphereList.add(y)
-                sphereList.add(z)
-            }
-        }
-        sphereCoords = sphereList.toFloatArray()
-    }
-
     override fun onDrawFrame(gl: GL10?) {
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        glDisable(GL_BLEND)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-
         val currentTime = System.nanoTime()
-        val deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f
+        val deltaTime = minOf((currentTime - lastFrameTime) / 1_000_000_000.0f, 0.1f)
         lastFrameTime = currentTime
 
-        if(cubes.size == 0){
+        if (cubes.size == 0) {
             Log.d(TAG, "onDrawFrame: NO CUBES !!!")
             makeCubes()
         }
 
-        // Отрисовка сетки
         drawGrid()
 
         synchronized(cubes) {
-            cubes.forEach { it.updateFall(deltaTime) }
+            particles.removeAll { !it.update(deltaTime) }
+            particles.forEach { it.draw(vpMatrix) }
 
-            // Обновляем позицию маленького кубика, если его родительский куб падает
+            cubes.forEach { it.updateFall(deltaTime) }
             smallCube?.let { small ->
                 parentCube?.let { parent ->
                     if (parent.isFalling) {
                         small.z = parent.z + parent.cubeSize()
-                        Log.d(TAG, "onDrawFrame: Moved small cube to z=${small.z} due to parent cube falling to z=${parent.z}")
                     }
                 }
-            }
-
-            for (i in 0 until 10) {
-                for (j in 0 until 10) {
-                    val height = heightMap[i][j]
-                    for (k in 0 until height) {
-                        val modelMatrix = FloatArray(16)
-                        Matrix.setIdentityM(modelMatrix, 0)
-                        Matrix.translateM(modelMatrix, 0, i.toFloat(), k.toFloat(), j.toFloat())
-                        val mvpMatrix = FloatArray(16)
-                        Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
-                        cube.draw(mvpMatrix)
-                    }
-                }
-            }
-
-            ballCube?.let {
-                val basePosition = Vector3(it.x, it.y, it.z + 0.5f)
-                val modelMatrix = FloatArray(16)
-                Matrix.setIdentityM(modelMatrix, 0)
-                Matrix.translateM(modelMatrix, 0, basePosition.x, basePosition.y, basePosition.z)
-                Matrix.scaleM(modelMatrix, 0, 3.0f, 3.0f, 3.0f)
-                val mvpMatrix = FloatArray(16)
-                Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
             }
 
             for (cube in cubes) {
                 cube.draw(vpMatrix)
             }
-
             smallCube?.draw(vpMatrix)
         }
-        //Log.d(TAG, "onDrawFrame: Rendered ${cubes.size} cubes and small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z})")
     }
 
     private fun drawGrid() {
@@ -352,9 +244,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             glVertexAttribPointer(gridPositionHandle, 3, GL_FLOAT, false, 0, it)
             glEnableVertexAttribArray(gridPositionHandle)
         }
-        glDepthMask(false) // Отключаем запись в буфер глубины
+        glDepthMask(false)
         glDrawArrays(GL_LINES, 0, gridVertexCount)
-        glDepthMask(true) // Включаем обратно
+        glDepthMask(true)
         glDisableVertexAttribArray(gridPositionHandle)
     }
 
@@ -385,32 +277,49 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
 
             if (closestIndex >= 0) {
                 val selectedCubeLocal = cubes[closestIndex]
-                selectedCube?.setSelected(false)
-                selectedCubeLocal.setSelected(true)
+                //selectedCube?.selectCube(false)
+                //selectedCubeLocal.selectCube(true)
                 selectedCubeLocal.randomizeColor()
-                ballCube = selectedCubeLocal
+                selectedCube = selectedCubeLocal
                 Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z})")
 
-                // Перемещаем маленький кубик на выбранный куб
                 smallCube?.let {
                     it.x = selectedCubeLocal.x
                     it.y = selectedCubeLocal.y
                     it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize()
-                    parentCube = selectedCubeLocal // Обновляем родительский куб
+                    parentCube = selectedCubeLocal
                     Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
                 }
 
-                // Удаляем куб
+                Log.d(TAG, "handleTouch: Creating 20 particles for explosion")
+                repeat(20) {
+                    val velocity = Vector3(
+                        Random.nextFloat() * 4f - 2f,
+                        Random.nextFloat() * 4f - 2f,
+                        Random.nextFloat() * 4f - 2f
+                    ).normalize() * 2f
+                    particles.add(
+                        Particle(
+                            x = selectedCubeLocal.x,
+                            y = selectedCubeLocal.y,
+                            z = selectedCubeLocal.z,
+                            color = selectedCubeLocal.getCubeColor(),
+                            sizeScale = 0.2f,
+                            velocity = velocity,
+                            lifeTime = 3f
+                        )
+                    )
+                }
+                Log.d(TAG, "handleTouch: Created 20 particles at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z}), particle count: ${particles.size}")
+
                 cubes.removeAt(closestIndex)
                 Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
 
-                // Если удалён родительский куб, сбрасываем parentCube
                 if (selectedCubeLocal == parentCube) {
                     parentCube = null
                     Log.d(TAG, "handleTouch: Parent cube removed, parentCube set to null")
                 }
 
-                // Находим кубы выше удалённого
                 val removedX = selectedCubeLocal.x
                 val removedY = selectedCubeLocal.y
                 val removedZ = selectedCubeLocal.z
@@ -426,11 +335,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
                 }
 
-                // Сбрасываем ballCube и selectedCube
-                ballCube = null
                 selectedCube = null
             } else {
-                selectedCube?.setSelected(false)
+                //selectedCube?.selectCube(false)
                 selectedCube = null
                 Log.d(TAG, "handleTouch: No cube selected")
             }

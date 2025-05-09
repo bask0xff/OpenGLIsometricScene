@@ -113,6 +113,10 @@ class Cube(var x: Float, var y: Float, var z: Float, private val baseColor: Floa
         }
     }
 
+    fun getCubeColor(): FloatArray {
+        return color
+    }
+
     fun draw(vpMatrix: FloatArray) {
         val offset = 1f
         Matrix.setIdentityM(modelMatrix, 0)
