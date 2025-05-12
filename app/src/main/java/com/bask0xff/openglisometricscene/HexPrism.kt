@@ -26,7 +26,7 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
     private val program: Int
 
     private val _prismRadius = 0.3f * sizeScale // Radius of the hexagonal base
-    private val prismHeight = 0.3f * sizeScale // Height of the prism along Z-axis
+    private val prismHeight = 0.3f * sizeScale * 1f // Height of the prism along Z-axis (3x taller)
 
     fun prismSize(): Float {
         return _prismRadius
@@ -109,7 +109,7 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
         indexBuffer.put(indices.toShortArray())
         indexBuffer.position(0)
 
-        // Shaders remain the same as in Cube
+        // Shaders
         val vertexShader = loadShader(GL_VERTEX_SHADER, """
             uniform mat4 uMVPMatrix;
             attribute vec4 vPosition;

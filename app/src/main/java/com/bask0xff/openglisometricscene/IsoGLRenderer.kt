@@ -58,14 +58,14 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private fun initializeGrid() {
         val gridCoords = mutableListOf<Float>()
         val numSides = 6
-        val radius = hexSize * 1.1f // Slightly larger for grid lines
+        val radius = hexSize // Match the prism radius for tight packing
 
         // Generate hexagonal grid lines
         for (q in -fieldSizeX until fieldSizeX) {
             for (r in -fieldSizeY until fieldSizeY) {
-                // Convert axial coordinates to Cartesian
+                // Convert axial coordinates to Cartesian for pointy-top hexagons
                 val centerX = hexSize * 3.0f / 2.0f * q
-                val centerY = hexSize * (kotlin.math.sqrt(3.0f) * r + kotlin.math.sqrt(3.0f) / 2.0f * q)
+                val centerY = hexSize * kotlin.math.sqrt(3.0f) * (r + q / 2.0f)
 
                 // Generate vertices for a single hexagon
                 for (i in 0 until numSides) {
@@ -152,7 +152,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 for (r in -fieldSizeY / 2 until fieldSizeY / 2) {
                     // Axial to Cartesian coordinates
                     val x = hexSize * 3.0f / 2.0f * q
-                    val y = hexSize * (kotlin.math.sqrt(3.0f) * r + kotlin.math.sqrt(3.0f) / 2.0f * q)
+                    val y = hexSize * kotlin.math.sqrt(3.0f) * (r + q / 2.0f)
                     var height = Random.nextFloat() * 7f
                     for (z in 0..height.toInt()) {
                         val color = colors.random()
