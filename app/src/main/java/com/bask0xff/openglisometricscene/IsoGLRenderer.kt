@@ -12,15 +12,19 @@ import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
 import kotlin.random.Random
 
 @SuppressLint("NewApi")
 class IsoGLRenderer : GLSurfaceView.Renderer {
+    private var selectedPrism: HexPrism? = null
     private val TAG = "IsoGLRenderer"
-    private val cubes = mutableListOf<Cube>()
+    private val hexPrisms = mutableListOf<HexPrism>()
     private val particles = mutableListOf<Particle>()
-    private var smallCube: Cube? = null
-    private var parentCube: Cube? = null
+    private var smallHexPrism: HexPrism? = null
+    private var parentHexPrism: HexPrism? = null
     val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val vpMatrix = FloatArray(16)
@@ -34,11 +38,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private var gridPositionHandle: Int = 0
     private var gridMVPMatrixHandle: Int = 0
 
-    private var selectedCube: Cube? = null
+    private var selectedHexPrism: HexPrism? = null
     private var lastFrameTime: Long = 0
     var fieldSizeX = 5
     var fieldSizeY = 5
-    var cubeSize = 0.5f
+    var hexSize = 0.3f // Radius of the hexagon
 
     private val heightMap = Array(10) { IntArray(10) }
 
@@ -52,25 +56,28 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     }
 
     private fun initializeGrid() {
-        val gridSizeX = fieldSizeX.toFloat()
-        val gridSizeY = fieldSizeY.toFloat()
-        val cellSize = 0.60f
         val gridCoords = mutableListOf<Float>()
+        val numSides = 6
+        val radius = hexSize * 1.1f // Slightly larger for grid lines
 
-        for (i in 0..fieldSizeX) {
-            val x = i * cellSize
-            gridCoords.addAll(listOf(
-                x, 0f, 0f,
-                x, gridSizeY * cellSize, 0f
-            ))
-        }
+        // Generate hexagonal grid lines
+        for (q in -fieldSizeX until fieldSizeX) {
+            for (r in -fieldSizeY until fieldSizeY) {
+                // Convert axial coordinates to Cartesian
+                val centerX = hexSize * 3.0f / 2.0f * q
+                val centerY = hexSize * (kotlin.math.sqrt(3.0f) * r + kotlin.math.sqrt(3.0f) / 2.0f * q)
 
-        for (j in 0..fieldSizeY) {
-            val y = j * cellSize
-            gridCoords.addAll(listOf(
-                0f, y, 0f,
-                gridSizeX * cellSize, y, 0f
-            ))
+                // Generate vertices for a single hexagon
+                for (i in 0 until numSides) {
+                    val angle1 = 2.0 * Math.PI * i / numSides
+                    val angle2 = 2.0 * Math.PI * (i + 1) / numSides
+                    val x1 = centerX + radius * cos(angle1).toFloat()
+                    val y1 = centerY + radius * sin(angle1).toFloat()
+                    val x2 = centerX + radius * cos(angle2).toFloat()
+                    val y2 = centerY + radius * sin(angle2).toFloat()
+                    gridCoords.addAll(listOf(x1, y1, 0f, x2, y2, 0f))
+                }
+            }
         }
 
         gridVertexCount = gridCoords.size / 3
@@ -99,17 +106,11 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
         glDisable(GL_BLEND)
-        makeCubes()
+        makeHexPrisms()
         lastFrameTime = System.nanoTime()
-
-        // Инициализация кубов
-        synchronized(cubes) {
-            //cubes.forEach { it.initialize() }
-            //smallCube?.initialize()
-        }
     }
 
-    private fun makeCubes() {
+    private fun makeHexPrisms() {
         val colors = listOf(
             floatArrayOf(1f, 0f, 0f, 1f), // Red
             floatArrayOf(0f, 1f, 0f, 1f), // Green
@@ -144,43 +145,45 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
             gridMVPMatrixHandle = glGetUniformLocation(it, "uMVPMatrix")
         }
 
-        synchronized(cubes) {
-            val cells = 5
-            cubes.clear()
-            var cubeCount = 0
-            for (x in 0 until cells) {
-                for (y in 0 until cells) {
+        synchronized(hexPrisms) {
+            hexPrisms.clear()
+            var prismCount = 0
+            for (q in -fieldSizeX / 2 until fieldSizeX / 2) {
+                for (r in -fieldSizeY / 2 until fieldSizeY / 2) {
+                    // Axial to Cartesian coordinates
+                    val x = hexSize * 3.0f / 2.0f * q
+                    val y = hexSize * (kotlin.math.sqrt(3.0f) * r + kotlin.math.sqrt(3.0f) / 2.0f * q)
                     var height = Random.nextFloat() * 7f
                     for (z in 0..height.toInt()) {
                         val color = colors.random()
-                        val offset = 0.60f
-                        cubes.add(
-                            Cube(
-                                x.toFloat() * offset,
-                                y.toFloat() * offset,
+                        val offset = 0.6f
+                        hexPrisms.add(
+                            HexPrism(
+                                x,
+                                y,
                                 z.toFloat() * offset,
                                 color
                             )
                         )
-                        Log.d(TAG, "onSurfaceCreated: Added cube $cubeCount at (${x * offset}, ${y * offset}, ${z * offset})")
-                        cubeCount++
+                        Log.d(TAG, "makeHexPrisms: Added prism $prismCount at ($x, $y, ${z * offset})")
+                        prismCount++
                     }
                 }
             }
-            Log.d(TAG, "onSurfaceCreated: Total cubes created: ${cubes.size}")
+            Log.d(TAG, "makeHexPrisms: Total prisms created: ${hexPrisms.size}")
 
-            if (cubes.isNotEmpty()) {
-                val randomCube = cubes.random()
-                val smallCubeSize = 0.2f
-                smallCube = Cube(
-                    randomCube.x,
-                    randomCube.y,
-                    randomCube.z + randomCube.cubeSize(),
+            if (hexPrisms.isNotEmpty()) {
+                val randomPrism = hexPrisms.random()
+                val smallPrismSize = 0.2f
+                smallHexPrism = HexPrism(
+                    randomPrism.x,
+                    randomPrism.y,
+                    randomPrism.z + randomPrism.prismSize(),
                     floatArrayOf(1f, 1f, 1f, 1f),
-                    smallCubeSize
+                    smallPrismSize
                 )
-                parentCube = randomCube
-                Log.d(TAG, "onSurfaceCreated: Added small cube at (${smallCube?.x}, ${smallCube?.y}, ${smallCube?.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
+                parentHexPrism = randomPrism
+                Log.d(TAG, "makeHexPrisms: Added small prism at (${smallHexPrism?.x}, ${smallHexPrism?.y}, ${smallHexPrism?.z}) on parent prism at (${parentHexPrism?.x}, ${parentHexPrism?.y}, ${parentHexPrism?.z})")
             }
         }
     }
@@ -209,30 +212,30 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val deltaTime = minOf((currentTime - lastFrameTime) / 1_000_000_000.0f, 0.1f)
         lastFrameTime = currentTime
 
-        if (cubes.size == 0) {
-            Log.d(TAG, "onDrawFrame: NO CUBES !!!")
-            makeCubes()
+        if (hexPrisms.size == 0) {
+            Log.d(TAG, "onDrawFrame: NO PRISMS !!!")
+            makeHexPrisms()
         }
 
         drawGrid()
 
-        synchronized(cubes) {
+        synchronized(hexPrisms) {
             particles.removeAll { !it.update(deltaTime) }
             particles.forEach { it.draw(vpMatrix) }
 
-            cubes.forEach { it.updateFall(deltaTime) }
-            smallCube?.let { small ->
-                parentCube?.let { parent ->
+            hexPrisms.forEach { it.updateFall(deltaTime) }
+            smallHexPrism?.let { small ->
+                parentHexPrism?.let { parent ->
                     if (parent.isFalling) {
-                        small.z = parent.z + parent.cubeSize()
+                        small.z = parent.z + parent.prismSize()
                     }
                 }
             }
 
-            for (cube in cubes) {
-                cube.draw(vpMatrix)
+            for (prism in hexPrisms) {
+                prism.draw(vpMatrix)
             }
-            smallCube?.draw(vpMatrix)
+            smallHexPrism?.draw(vpMatrix)
         }
     }
 
@@ -259,36 +262,34 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         var closestIndex = -1
         var minDistance = Float.MAX_VALUE
 
-        synchronized(cubes) {
-            if (cubes.isEmpty()) {
-                Log.d(TAG, "handleTouch: No cubes available")
+        synchronized(hexPrisms) {
+            if (hexPrisms.isEmpty()) {
+                Log.d(TAG, "handleTouch: No prisms available")
                 return closestIndex
             }
 
-            cubes.forEachIndexed { index, cube ->
-                val distance = cube.intersectRayWithCube(rayOrigin, rayDir)
-                Log.d(TAG, "handleTouch: Cube $index at (${cube.x}, ${cube.y}, ${cube.z}), distance: ${distance ?: "null"}")
+            hexPrisms.forEachIndexed { index, prism ->
+                val distance = prism.intersectRayWithHexPrism(rayOrigin, rayDir)
+                Log.d(TAG, "handleTouch: Prism $index at (${prism.x}, ${prism.y}, ${prism.z}), distance: ${distance ?: "null"}")
                 if (distance != null && distance < minDistance) {
                     minDistance = distance
                     closestIndex = index
-                    Log.d(TAG, "handleTouch: New closest cube index: $index at distance $distance")
+                    Log.d(TAG, "handleTouch: New closest prism index: $index at distance $distance")
                 }
             }
 
             if (closestIndex >= 0) {
-                val selectedCubeLocal = cubes[closestIndex]
-                //selectedCube?.selectCube(false)
-                //selectedCubeLocal.selectCube(true)
-                selectedCubeLocal.randomizeColor()
-                selectedCube = selectedCubeLocal
-                Log.d(TAG, "handleTouch: Selected cube index: $closestIndex at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z})")
+                val selectedPrismLocal = hexPrisms[closestIndex]
+                selectedPrismLocal.randomizeColor()
+                selectedPrism = selectedPrismLocal
+                Log.d(TAG, "handleTouch: Selected prism index: $closestIndex at (${selectedPrismLocal.x}, ${selectedPrismLocal.y}, ${selectedPrismLocal.z})")
 
-                smallCube?.let {
-                    it.x = selectedCubeLocal.x
-                    it.y = selectedCubeLocal.y
-                    it.z = selectedCubeLocal.z + selectedCubeLocal.cubeSize()
-                    parentCube = selectedCubeLocal
-                    Log.d(TAG, "handleTouch: Moved small cube to (${it.x}, ${it.y}, ${it.z}) on parent cube at (${parentCube?.x}, ${parentCube?.y}, ${parentCube?.z})")
+                smallHexPrism?.let {
+                    it.x = selectedPrismLocal.x
+                    it.y = selectedPrismLocal.y
+                    it.z = selectedPrismLocal.z + selectedPrismLocal.prismSize()
+                    parentHexPrism = selectedPrismLocal
+                    Log.d(TAG, "handleTouch: Moved small prism to (${it.x}, ${it.y}, ${it.z}) on parent prism at (${parentHexPrism?.x}, ${parentHexPrism?.y}, ${parentHexPrism?.z})")
                 }
 
                 Log.d(TAG, "handleTouch: Creating 20 particles for explosion")
@@ -300,46 +301,45 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                     ).normalize() * 2f
                     particles.add(
                         Particle(
-                            x = selectedCubeLocal.x,
-                            y = selectedCubeLocal.y,
-                            z = selectedCubeLocal.z,
-                            color = selectedCubeLocal.getCubeColor(),
+                            x = selectedPrismLocal.x,
+                            y = selectedPrismLocal.y,
+                            z = selectedPrismLocal.z,
+                            color = selectedPrismLocal.getPrismColor(),
                             sizeScale = 0.2f,
                             velocity = velocity,
                             lifeTime = 3f
                         )
                     )
                 }
-                Log.d(TAG, "handleTouch: Created 20 particles at (${selectedCubeLocal.x}, ${selectedCubeLocal.y}, ${selectedCubeLocal.z}), particle count: ${particles.size}")
+                Log.d(TAG, "handleTouch: Created 20 particles at (${selectedPrismLocal.x}, ${selectedPrismLocal.y}, ${selectedPrismLocal.z}), particle count: ${particles.size}")
 
-                cubes.removeAt(closestIndex)
-                Log.d(TAG, "handleTouch: Removed cube at index $closestIndex")
+                hexPrisms.removeAt(closestIndex)
+                Log.d(TAG, "handleTouch: Removed prism at index $closestIndex")
 
-                if (selectedCubeLocal == parentCube) {
-                    parentCube = null
-                    Log.d(TAG, "handleTouch: Parent cube removed, parentCube set to null")
+                if (selectedPrismLocal == parentHexPrism) {
+                    parentHexPrism = null
+                    Log.d(TAG, "handleTouch: Parent prism removed, parentHexPrism set to null")
                 }
 
-                val removedX = selectedCubeLocal.x
-                val removedY = selectedCubeLocal.y
-                val removedZ = selectedCubeLocal.z
-                val offset = 0.60f
-                val cubesAbove = cubes.filter {
+                val removedX = selectedPrismLocal.x
+                val removedY = selectedPrismLocal.y
+                val removedZ = selectedPrismLocal.z
+                val offset = 0.6f
+                val prismsAbove = hexPrisms.filter {
                     abs(it.x - removedX) < 0.01f && abs(it.y - removedY) < 0.01f && it.z > removedZ
                 }
-                cubesAbove.forEach { cube ->
-                    cube.isFalling = true
-                    cube.startZ = cube.z
-                    cube.targetZ = cube.z - offset
-                    cube.fallProgress = 0f
-                    Log.d(TAG, "handleTouch: Cube at (${cube.x}, ${cube.y}, ${cube.z}) will fall to z=${cube.targetZ}")
+                prismsAbove.forEach { prism ->
+                    prism.isFalling = true
+                    prism.startZ = prism.z
+                    prism.targetZ = prism.z - offset
+                    prism.fallProgress = 0f
+                    Log.d(TAG, "handleTouch: Prism at (${prism.x}, ${prism.y}, ${prism.z}) will fall to z=${prism.targetZ}")
                 }
 
-                selectedCube = null
+                selectedPrism = null
             } else {
-                //selectedCube?.selectCube(false)
-                selectedCube = null
-                Log.d(TAG, "handleTouch: No cube selected")
+                selectedPrism = null
+                Log.d(TAG, "handleTouch: No prism selected")
             }
         }
 
