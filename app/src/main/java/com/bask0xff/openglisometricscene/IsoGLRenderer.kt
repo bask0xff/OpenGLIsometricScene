@@ -194,12 +194,13 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         surfaceWidth = width
         surfaceHeight = height
         val ratio = width.toFloat() / height
-        Matrix.orthoM(projectionMatrix, 0, -ratio * 5, ratio * 5, -5f, 5f, -10f, 10f)
+        // Увеличьте far plane с 10f до 100f (или другого значения по вашим требованиям)
+        Matrix.orthoM(projectionMatrix, 0, -ratio * 5, ratio * 5, -5f, 5f, -10f, 100f)
         Matrix.setLookAtM(
             viewMatrix, 0,
-            5f, 5f, 5f,
-            0f, 0f, 0f,
-            0f, 0f, 1f
+            5f, 5f, 5f, // Камера находится на (5, 5, 5)
+            0f, 0f, 0f, // Смотрит на (0, 0, 0)
+            0f, 0f, 1f  // Вектор "вверх"
         )
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
         Log.d(TAG, "onSurfaceChanged: Viewport set to $width x $height")
