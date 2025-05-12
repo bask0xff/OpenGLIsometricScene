@@ -25,7 +25,7 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
 
     private val program: Int
 
-    private val _prismRadius = 0.9f * sizeScale // Radius of the hexagonal base
+    private val _prismRadius = 0.42f * sizeScale // Radius of the hexagonal base
     private val prismHeight = 0.3f * sizeScale / 3f // Height of the prism along Z-axis (3x shorter than original)
 
     fun prismSize(): Float {

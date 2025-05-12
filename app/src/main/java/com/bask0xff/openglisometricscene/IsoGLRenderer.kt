@@ -42,7 +42,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
     private var lastFrameTime: Long = 0
     var fieldSizeX = 5
     var fieldSizeY = 5
-    var hexSize = 0.9f // Radius of the hexagon
+    var hexSize = 0.42f // Radius of the hexagon
 
     private val heightMap = Array(10) { IntArray(10) }
 
