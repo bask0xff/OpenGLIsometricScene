@@ -61,8 +61,8 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         val radius = hexSize // Match the prism radius for tight packing
 
         // Generate hexagonal grid lines
-        for (q in -fieldSizeX until fieldSizeX) {
-            for (r in -fieldSizeY until fieldSizeY) {
+        for (q in -fieldSizeX / 2 until fieldSizeX / 2) {
+            for (r in -fieldSizeY / 2 until fieldSizeY / 2) {
                 // Convert axial coordinates to Cartesian for pointy-top hexagons
                 val centerX = hexSize * 3.0f / 2.0f * q
                 val centerY = hexSize * kotlin.math.sqrt(3.0f) * (r + q / 2.0f)
@@ -70,7 +70,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 // Generate vertices for a single hexagon
                 for (i in 0 until numSides) {
                     val angle1 = 2.0 * Math.PI * i / numSides
-                    var angle2 = 2.0 * Math.PI * (i + 1) / numSides
+                    val angle2 = 2.0 * Math.PI * (i + 1) / numSides
                     val x1 = centerX + radius * cos(angle1).toFloat()
                     val y1 = centerY + radius * sin(angle1).toFloat()
                     val x2 = centerX + radius * cos(angle2).toFloat()
@@ -148,15 +148,16 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         synchronized(hexPrisms) {
             hexPrisms.clear()
             var prismCount = 0
-            for (q in -fieldSizeX until fieldSizeX) {
-                for (r in -fieldSizeY until fieldSizeY) {
+            val prismHeight = 0.1f // Matches prismHeight = 0.3f / 3f with sizeScale = 1.0f
+            val offset = prismHeight * 2f // Twice the prism height for top-to-bottom stacking
+            for (q in -fieldSizeX / 2 until fieldSizeX / 2) {
+                for (r in -fieldSizeY / 2 until fieldSizeY / 2) {
                     // Axial to Cartesian coordinates, matching initializeGrid
                     val x = hexSize * 3.0f / 2.0f * q
                     val y = hexSize * kotlin.math.sqrt(3.0f) * (r + q / 2.0f)
                     var height = Random.nextFloat() * 7f
                     for (z in 0..height.toInt()) {
                         val color = colors.random()
-                        val offset = 0.6f
                         hexPrisms.add(
                             HexPrism(
                                 x,
@@ -324,7 +325,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 val removedX = selectedPrismLocal.x
                 val removedY = selectedPrismLocal.y
                 val removedZ = selectedPrismLocal.z
-                val offset = 0.6f
+                val offset = 0.2f // Match the offset used in makeHexPrisms
                 val prismsAbove = hexPrisms.filter {
                     abs(it.x - removedX) < 0.01f && abs(it.y - removedY) < 0.01f && it.z > removedZ
                 }
