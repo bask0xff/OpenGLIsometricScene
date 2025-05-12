@@ -70,7 +70,7 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
                 // Generate vertices for a single hexagon
                 for (i in 0 until numSides) {
                     val angle1 = 2.0 * Math.PI * i / numSides
-                    val angle2 = 2.0 * Math.PI * (i + 1) / numSides
+                    var angle2 = 2.0 * Math.PI * (i + 1) / numSides
                     val x1 = centerX + radius * cos(angle1).toFloat()
                     val y1 = centerY + radius * sin(angle1).toFloat()
                     val x2 = centerX + radius * cos(angle2).toFloat()
@@ -148,9 +148,9 @@ class IsoGLRenderer : GLSurfaceView.Renderer {
         synchronized(hexPrisms) {
             hexPrisms.clear()
             var prismCount = 0
-            for (q in -fieldSizeX / 2 until fieldSizeX / 2) {
-                for (r in -fieldSizeY / 2 until fieldSizeY / 2) {
-                    // Axial to Cartesian coordinates
+            for (q in -fieldSizeX until fieldSizeX) {
+                for (r in -fieldSizeY until fieldSizeY) {
+                    // Axial to Cartesian coordinates, matching initializeGrid
                     val x = hexSize * 3.0f / 2.0f * q
                     val y = hexSize * kotlin.math.sqrt(3.0f) * (r + q / 2.0f)
                     var height = Random.nextFloat() * 7f
