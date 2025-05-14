@@ -36,13 +36,14 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
     private val hexVertices: FloatArray
 
     init {
-        // Generate vertices for top and bottom hexagonal faces
+        // Increase number of sides for smoother base
+        val numSides = 6 // Use more sides for rounded corners (e.g., 12 or 24)
+        val bevelFactor = 0.05f * sizeScale // Controls the size of the bevel
         val vertices = mutableListOf<Float>()
-        val numSides = 6
         val topZ = prismHeight
         val bottomZ = -prismHeight
 
-        // Top face vertices (6 vertices)
+        // Top face vertices
         for (i in 0 until numSides) {
             val angle = 2.0 * Math.PI * i / numSides
             val vx = _prismRadius * cos(angle).toFloat()
@@ -50,7 +51,7 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
             vertices.addAll(listOf(vx, vy, topZ, color[0], color[1], color[2], color[3]))
         }
 
-        // Bottom face vertices (6 vertices)
+        // Bottom face vertices
         for (i in 0 until numSides) {
             val angle = 2.0 * Math.PI * i / numSides
             val vx = _prismRadius * cos(angle).toFloat()
@@ -58,37 +59,74 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
             vertices.addAll(listOf(vx, vy, bottomZ, color[0] * 0.5f, color[1] * 0.5f, color[2] * 0.5f, color[3]))
         }
 
-        // Side face vertices (duplicate vertices for distinct coloring)
+        // Bevel ring for top face (transition to sides)
+        val topBevelZ = topZ - bevelFactor
+        for (i in 0 until numSides) {
+            val angle = 2.0 * Math.PI * i / numSides
+            val vx = (_prismRadius + bevelFactor) * cos(angle).toFloat() // Slightly larger radius
+            val vy = (_prismRadius + bevelFactor) * sin(angle).toFloat()
+            vertices.addAll(listOf(vx, vy, topBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]))
+        }
+
+        // Bevel ring for bottom face
+        val bottomBevelZ = bottomZ + bevelFactor
+        for (i in 0 until numSides) {
+            val angle = 2.0 * Math.PI * i / numSides
+            val vx = (_prismRadius + bevelFactor) * cos(angle).toFloat()
+            val vy = (_prismRadius + bevelFactor) * sin(angle).toFloat()
+            vertices.addAll(listOf(vx, vy, bottomBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]))
+        }
+
+        // Side face vertices (connect top bevel to bottom bevel)
         for (i in 0 until numSides) {
             val angle = 2.0 * Math.PI * i / numSides
             val nextAngle = 2.0 * Math.PI * ((i + 1) % numSides) / numSides
-            val vx1 = _prismRadius * cos(angle).toFloat()
-            val vy1 = _prismRadius * sin(angle).toFloat()
-            val vx2 = _prismRadius * cos(nextAngle).toFloat()
-            val vy2 = _prismRadius * sin(nextAngle).toFloat()
-            // Side face i (4 vertices: top1, top2, bottom2, bottom1)
+            val vx1 = (_prismRadius + bevelFactor) * cos(angle).toFloat()
+            val vy1 = (_prismRadius + bevelFactor) * sin(angle).toFloat()
+            val vx2 = (_prismRadius + bevelFactor) * cos(nextAngle).toFloat()
+            val vy2 = (_prismRadius + bevelFactor) * sin(nextAngle).toFloat()
+            // Side quad: topBevel1, topBevel2, bottomBevel2, bottomBevel1
             vertices.addAll(listOf(
-                vx1, vy1, topZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
-                vx2, vy2, topZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
-                vx2, vy2, bottomZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
-                vx1, vy1, bottomZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]
+                vx1, vy1, topBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
+                vx2, vy2, topBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
+                vx2, vy2, bottomBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
+                vx1, vy1, bottomBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]
             ))
         }
 
         hexVertices = vertices.toFloatArray()
 
-        // Define indices for drawing
+        // Update indices
         val indices = mutableListOf<Short>()
-        // Top face (two triangles per quad)
+        // Top face
         for (i in 1 until numSides - 1) {
             indices.addAll(listOf(0, i.toShort(), (i + 1).toShort()))
         }
-        // Bottom face (vertices 6 to 11)
+        // Bottom face
+        val bottomBase = numSides
         for (i in 1 until numSides - 1) {
-            indices.addAll(listOf(6, (6 + i).toShort(), (6 + i + 1).toShort()))
+            indices.addAll(listOf(bottomBase.toShort(), (bottomBase + i).toShort(), (bottomBase + i + 1).toShort()))
         }
-        // Side faces (6 quads, each with 2 triangles)
-        val sideBase = numSides * 2
+        // Connect top face to top bevel
+        val topBevelBase = numSides * 2
+        for (i in 0 until numSides) {
+            val next = (i + 1) % numSides
+            indices.addAll(listOf(
+                i.toShort(), next.toShort(), (topBevelBase + next).toShort(),
+                i.toShort(), (topBevelBase + next).toShort(), (topBevelBase + i).toShort()
+            ))
+        }
+        // Connect bottom face to bottom bevel
+        val bottomBevelBase = numSides * 3
+        for (i in 0 until numSides) {
+            val next = (i + 1) % numSides
+            indices.addAll(listOf(
+                (bottomBase + i).toShort(), (bottomBase + next).toShort(), (bottomBevelBase + next).toShort(),
+                (bottomBase + i).toShort(), (bottomBevelBase + next).toShort(), (bottomBevelBase + i).toShort()
+            ))
+        }
+        // Side faces
+        val sideBase = numSides * 4
         for (i in 0 until numSides) {
             val base = sideBase + i * 4
             indices.addAll(listOf(
@@ -97,6 +135,7 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
             ))
         }
 
+        // Buffer setup remains the same
         val bb = ByteBuffer.allocateDirect(hexVertices.size * 4)
         bb.order(ByteOrder.nativeOrder())
         vertexBuffer = bb.asFloatBuffer()
@@ -194,10 +233,13 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
     }
 
     private fun updateVertexColors() {
+        val numSides = 6 // Match init
+        val bevelFactor = 0.05f * sizeScale
         val vertices = mutableListOf<Float>()
-        val numSides = 6
         val topZ = prismHeight
         val bottomZ = -prismHeight
+        val topBevelZ = topZ - bevelFactor
+        val bottomBevelZ = bottomZ + bevelFactor
 
         // Top face
         for (i in 0 until numSides) {
@@ -215,19 +257,35 @@ class HexPrism(var x: Float, var y: Float, var z: Float, private val baseColor: 
             vertices.addAll(listOf(vx, vy, bottomZ, color[0] * 0.5f, color[1] * 0.5f, color[2] * 0.5f, color[3]))
         }
 
+        // Top bevel
+        for (i in 0 until numSides) {
+            val angle = 2.0 * Math.PI * i / numSides
+            val vx = (_prismRadius + bevelFactor) * cos(angle).toFloat()
+            val vy = (_prismRadius + bevelFactor) * sin(angle).toFloat()
+            vertices.addAll(listOf(vx, vy, topBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]))
+        }
+
+        // Bottom bevel
+        for (i in 0 until numSides) {
+            val angle = 2.0 * Math.PI * i / numSides
+            val vx = (_prismRadius + bevelFactor) * cos(angle).toFloat()
+            val vy = (_prismRadius + bevelFactor) * sin(angle).toFloat()
+            vertices.addAll(listOf(vx, vy, bottomBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]))
+        }
+
         // Side faces
         for (i in 0 until numSides) {
             val angle = 2.0 * Math.PI * i / numSides
             val nextAngle = 2.0 * Math.PI * ((i + 1) % numSides) / numSides
-            val vx1 = _prismRadius * cos(angle).toFloat()
-            val vy1 = _prismRadius * sin(angle).toFloat()
-            val vx2 = _prismRadius * cos(nextAngle).toFloat()
-            val vy2 = _prismRadius * sin(nextAngle).toFloat()
+            val vx1 = (_prismRadius + bevelFactor) * cos(angle).toFloat()
+            val vy1 = (_prismRadius + bevelFactor) * sin(angle).toFloat()
+            val vx2 = (_prismRadius + bevelFactor) * cos(nextAngle).toFloat()
+            val vy2 = (_prismRadius + bevelFactor) * sin(nextAngle).toFloat()
             vertices.addAll(listOf(
-                vx1, vy1, topZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
-                vx2, vy2, topZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
-                vx2, vy2, bottomZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
-                vx1, vy1, bottomZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]
+                vx1, vy1, topBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
+                vx2, vy2, topBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
+                vx2, vy2, bottomBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3],
+                vx1, vy1, bottomBevelZ, color[0] * 0.67f, color[1] * 0.67f, color[2] * 0.67f, color[3]
             ))
         }
 
