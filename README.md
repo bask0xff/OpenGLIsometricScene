@@ -16,3 +16,7 @@ video demo
 
 ![photo_2025-05-07_08-46-09](https://github.com/user-attachments/assets/40dca81f-32ee-44cf-b98f-872b775e0186)
 
+4th version (16.06.2025)
+
+https://github.com/user-attachments/assets/6f3cef1d-2e4f-407b-bd71-12ac76a00c9b
+
