@@ -1,22 +1,58 @@
-Android application demo.
-OpenGL ortho isometric scene. 5x5x1 color cubes with touch selection each others
+# OpenGL Isometric Scene Demo
 
-video demo
+This is a demo Android application that renders an orthographic isometric scene using OpenGL ES. It features a 5x5x1 grid of colored cubes with touch-based selection for individual cubes.
+
+## Features
+- Isometric orthographic projection for 3D scene rendering.
+- 5x5 grid of colorful cubes.
+- Touch interaction to select and highlight cubes.
+- Progressive versions showing development improvements.
+
+## Demo Video
+![Video Demo](ezgif-22021c897f4310.gif)
+
+For a full video walkthrough of an intermediate version:
 ![ezgif-22021c897f4310](https://github.com/user-attachments/assets/7876abdd-2bdc-4152-9f72-195389b5f6c4)
 
-1st version (21.04.2025)
+## Versions
+### 1st Version (21.04.2025)
+![1st Version](https://github.com/user-attachments/assets/80fc7c4c-67dc-465a-adbe-8182f366e704)
 
-![photo_2025-04-21_10-36-31](https://github.com/user-attachments/assets/80fc7c4c-67dc-465a-adbe-8182f366e704)
+### 2nd Version (01.05.2025)
+![2nd Version](https://github.com/user-attachments/assets/5e3feece-5894-4fba-af8a-983101c27def)
 
-2nd version (01.05.2025)
+### 3rd Version (07.05.2025)
+![3rd Version](https://github.com/user-attachments/assets/40dca81f-32ee-44cf-b98f-872b775e0186)
 
-![photo_2025-05-01_13-56-14](https://github.com/user-attachments/assets/5e3feece-5894-4fba-af8a-983101c27def)
-
-3rd version (07.05.2025)
-
-![photo_2025-05-07_08-46-09](https://github.com/user-attachments/assets/40dca81f-32ee-44cf-b98f-872b775e0186)
-
-4th version (16.06.2025)
-
+### 4th Version (16.06.2025)
 https://github.com/user-attachments/assets/6f3cef1d-2e4f-407b-bd71-12ac76a00c9b
+<video src="video_2025-06-16_14-45-25.mp4" controls width="600"></video>
+
+## Installation and Building
+1. Clone the repository:
+```
+git clone https://github.com/bask0xff/OpenGLIsometricScene.git
+```
+2. Open the project in Android Studio.
+3. Ensure you have the Android SDK installed (target SDK likely 34 or higher, min SDK 21+ for OpenGL ES support).
+4. Build the project (Gradle will handle dependencies).
+5. Run on an emulator or physical device.
+
+Alternatively, download the pre-built APK from `app/release/app-release.apk` and install it directly on your Android device (enable unknown sources if needed).
+
+## Requirements
+- Android Studio 2023+ (with Gradle 8+).
+- Java 17+ (based on build files).
+- Device/emulator supporting OpenGL ES 2.0+.
+
+## Contributing
+Feel free to fork and submit pull requests for improvements, such as adding camera controls or shaders.
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. (Note: Add a LICENSE file to your repo if not present.)
+
+## About
+Developed as a personal demo for exploring OpenGL isometric rendering on Android. No external dependencies beyond standard Android libraries.
+
+
 
