@@ -23,7 +23,8 @@ For a full video walkthrough of an intermediate version:
 ![3rd Version](https://github.com/user-attachments/assets/40dca81f-32ee-44cf-b98f-872b775e0186)
 
 ### 4th Version (16.06.2025)
-<video src="[video_2025-06-16_14-45-25.mp4](https://github.com/user-attachments/assets/6f3cef1d-2e4f-407b-bd71-12ac76a00c9b)" controls width="600"></video>
+https://github.com/user-attachments/assets/c3f51098-1167-4889-9b42-d852ae4adeec
+
 
 ## Installation and Building
 1. Clone the repository:
