@@ -9,8 +9,6 @@ This is a demo Android application that renders an orthographic isometric scene 
 - Progressive versions showing development improvements.
 
 ## Demo Video
-![Video Demo](ezgif-22021c897f4310.gif)
-
 For a full video walkthrough of an intermediate version:
 ![ezgif-22021c897f4310](https://github.com/user-attachments/assets/7876abdd-2bdc-4152-9f72-195389b5f6c4)
 
@@ -25,8 +23,7 @@ For a full video walkthrough of an intermediate version:
 ![3rd Version](https://github.com/user-attachments/assets/40dca81f-32ee-44cf-b98f-872b775e0186)
 
 ### 4th Version (16.06.2025)
-https://github.com/user-attachments/assets/6f3cef1d-2e4f-407b-bd71-12ac76a00c9b
-<video src="video_2025-06-16_14-45-25.mp4" controls width="600"></video>
+<video src="[video_2025-06-16_14-45-25.mp4](https://github.com/user-attachments/assets/6f3cef1d-2e4f-407b-bd71-12ac76a00c9b)" controls width="600"></video>
 
 ## Installation and Building
 1. Clone the repository:
